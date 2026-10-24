@@ -1,7 +1,7 @@
 // Bench Academy service worker: precache the app shell and card art, cache Google Fonts at runtime.
-const CACHE = 'bench-academy-v5';
+const CACHE = 'bench-academy-v6';
 const SHELL = ['./', 'index.html', 'app.js', 'net.js', 'vendor/qrcode.min.js', 'vendor/jsQR.min.js', 'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png'];
-const ART = ['cindlet','pyrrox','magmaw','puffkin','budling','thornoak','ripplet','stag','potion','switch','fieldguide','research','fireE','grassE','waterE','rival'].map(n => `art/${n}.webp`);
+const ART = ['cindlet', 'pyrrox', 'magmaw', 'puffkin', 'budling', 'thornoak', 'ripplet', 'stag', 'flintkit', 'forgehound', 'tidalisk', 'pebbleshell', 'sporelet', 'mycolord', 'zappup', 'voltwolf', 'stormwing', 'burrowbun', 'ironhorn', 'cinderbat', 'blazewing', 'scorchtoise', 'kindlemoth', 'drizzlet', 'monsoonray', 'coralhorn', 'leviathorn', 'thistlit', 'brambleboar', 'petalmoth', 'mosswisp', 'coilbug', 'teslamander', 'ampereel', 'fluxfly', 'scrapjay', 'gustcrow', 'lumberbear', 'mimicat', 'potion', 'healingberry', 'antidoteherb', 'greatball', 'retriever', 'energysearch', 'sparebattery', 'lecture', 'fieldmedic', 'swappartner', 'rushorders', 'superpotion', 'energyretrieval', 'peptalk', 'lurewhistle', 'switch', 'fieldguide', 'research', 'fireE', 'grassE', 'waterE', 'lightningE', 'rival'].map(n => `art/${n}.webp`);
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(async c => {
     await c.addAll(SHELL);

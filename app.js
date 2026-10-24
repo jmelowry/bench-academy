@@ -21,26 +21,121 @@ const DEF = {
     attacks:[{name:'Vine Whip',cost:['G'],dmg:20}],art:{rx:12,ry:11,feat:'leaf'}},
   thornoak:{kind:'pokemon',name:'Thornoak',stage:'Stage 1',from:'Budling',type:'G',hp:120,weak:'F',resist:'W',retreat:3,
     attacks:[{name:'Bramble Lash',cost:['G','C'],dmg:50},{name:'Toxic Thorn',cost:['G','G','C'],dmg:60,text:`Your opponent's Active Pokémon is now Poisoned.`,fx:'poison'}],art:{rx:22,ry:19,feat:'spikes'}},
-  ripplet:{kind:'pokemon',name:'Ripplet',stage:'Basic',type:'W',hp:70,weak:'G',retreat:1,
+  ripplet:{kind:'pokemon',name:'Ripplet',stage:'Basic',type:'W',hp:70,weak:'L',retreat:1,
     attacks:[{name:'Bubble Shot',cost:['W','C'],dmg:40}],art:{rx:16,ry:12,feat:'fin'}},
   stag:{kind:'pokemon',name:'Verdant Stag ex',ex:true,stage:'Basic',type:'G',hp:180,weak:'F',retreat:2,
     attacks:[{name:'Antler Charge',cost:['G','C'],dmg:50},{name:'Forest Fury',cost:['G','G','C'],dmg:140}],art:{rx:23,ry:18,feat:'antlers'}},
+  flintkit:{kind:'pokemon',name:'Flintkit',stage:'Basic',type:'F',hp:70,weak:'W',retreat:1,
+    attacks:[{name:'Spark Bite',cost:['F'],dmg:10,plus:true,text:'Flip a coin. If heads, this attack does 20 more damage.',fx:'flip20'}],art:{rx:15,ry:11,feat:'spikes'}},
+  forgehound:{kind:'pokemon',name:'Forgehound',stage:'Stage 1',from:'Flintkit',type:'F',hp:120,weak:'W',retreat:2,
+    attacks:[{name:'Hot Fang',cost:['F','C'],dmg:50},{name:'Furnace Charge',cost:['F','F','C'],dmg:40,plus:true,text:'This attack does 20 more damage for each Fire Energy attached to this Pokémon.',fx:'moreF'}],art:{rx:21,ry:16,feat:'ears'}},
+  tidalisk:{kind:'pokemon',name:'Tidalisk',stage:'Stage 1',from:'Ripplet',type:'W',hp:120,weak:'L',retreat:2,
+    attacks:[{name:'Aqua Lash',cost:['W','C'],dmg:60},{name:'Restoring Tide',cost:['W','W','C'],dmg:90,text:'Heal 30 damage from this Pokémon.',fx:'heal30'}],art:{rx:21,ry:14,feat:'fin'}},
+  pebbleshell:{kind:'pokemon',name:'Pebbleshell',stage:'Basic',type:'W',hp:90,weak:'L',retreat:2,
+    attacks:[{name:'Pinch',cost:['W'],dmg:20},{name:'Shell Bash',cost:['W','C','C'],dmg:60}],art:{rx:19,ry:12,feat:'spikes'}},
+  sporelet:{kind:'pokemon',name:'Sporelet',stage:'Basic',type:'G',hp:50,weak:'F',retreat:1,
+    attacks:[{name:'Spore Puff',cost:['G'],dmg:10,text:`Your opponent's Active Pokémon is now Poisoned.`,fx:'poison'}],art:{rx:12,ry:12,feat:'leaf'}},
+  mycolord:{kind:'pokemon',name:'Mycolord',stage:'Stage 1',from:'Sporelet',type:'G',hp:110,weak:'F',retreat:2,
+    attacks:[{name:'Toxic Cloud',cost:['G'],dmg:20,text:`Your opponent's Active Pokémon is now Poisoned.`,fx:'poison'},{name:'Fungal Crush',cost:['G','G','C'],dmg:60,plus:true,text:`If your opponent's Active Pokémon is Poisoned, this attack does 60 more damage.`,fx:'poisonBonus'}],art:{rx:21,ry:18,feat:'leaf'}},
+  zappup:{kind:'pokemon',name:'Zappup',stage:'Basic',type:'L',hp:60,weak:'G',retreat:1,
+    attacks:[{name:'Static Nip',cost:['L'],dmg:10,text:`Flip a coin. If heads, your opponent's Active Pokémon is now Paralyzed.`,fx:'flipPara'}],art:{rx:13,ry:11,feat:'ears'}},
+  voltwolf:{kind:'pokemon',name:'Voltwolf',stage:'Stage 1',from:'Zappup',type:'L',hp:110,weak:'G',retreat:1,
+    attacks:[{name:'Thunder Fang',cost:['L','C'],dmg:40,text:`Flip a coin. If heads, your opponent's Active Pokémon is now Paralyzed.`,fx:'flipPara'},{name:'Volt Rush',cost:['L','L','C'],dmg:110,text:'This Pokémon also does 20 damage to itself.',fx:'self20'}],art:{rx:20,ry:15,feat:'ears'}},
+  stormwing:{kind:'pokemon',name:'Stormwing ex',ex:true,stage:'Basic',type:'L',hp:180,weak:'G',retreat:2,
+    attacks:[{name:'Gale Shock',cost:['L','C'],dmg:50},{name:'Tempest Rain',cost:['L','L','C'],dmg:120,text:`This attack also does 10 damage to each of your opponent's Benched Pokémon.`,fx:'bench10'}],art:{rx:24,ry:16,feat:'antlers'}},
+  burrowbun:{kind:'pokemon',name:'Burrowbun',stage:'Basic',type:'C',hp:60,weak:'L',retreat:1,
+    attacks:[{name:'Dig Up',cost:['C'],dmg:10,text:'Draw a card.',fx:'draw1'},{name:'Quick Kick',cost:['C','C'],dmg:30}],art:{rx:15,ry:13,feat:'ears'}},
+  ironhorn:{kind:'pokemon',name:'Ironhorn',stage:'Basic',type:'C',hp:110,weak:'L',retreat:3,
+    attacks:[{name:'Horn Rush',cost:['C','C','C'],dmg:70}],art:{rx:22,ry:15,feat:'spikes'}},
+  cinderbat:{kind:'pokemon',name:'Cinderbat',stage:'Basic',type:'F',hp:50,weak:'W',retreat:1,
+    attacks:[{name:'Bite',cost:['C'],dmg:10},{name:'Ember Dive',cost:['F','C'],dmg:30}],art:{rx:13,ry:11,feat:'ears'}},
+  blazewing:{kind:'pokemon',name:'Blazewing',stage:'Stage 1',from:'Cinderbat',type:'F',hp:100,weak:'W',retreat:1,
+    attacks:[{name:'Flare Peck',cost:['F'],dmg:30},{name:'Scorching Dive',cost:['F','F','C'],dmg:80,text:`This attack also does 30 damage to your opponent's Benched Pokémon with the least HP left.`,fx:'snipe30'}],art:{rx:20,ry:14,feat:'ears'}},
+  scorchtoise:{kind:'pokemon',name:'Scorchtoise',stage:'Basic',type:'F',hp:120,weak:'W',retreat:3,
+    attacks:[{name:'Shell Bump',cost:['C','C'],dmg:30},{name:'Magma Ram',cost:['F','F','C','C'],dmg:120}],art:{rx:23,ry:15,feat:'spikes'}},
+  kindlemoth:{kind:'pokemon',name:'Kindlemoth',stage:'Basic',type:'F',hp:60,weak:'W',retreat:1,
+    attacks:[{name:'Dazzle Dust',cost:['F'],dmg:10,text:`Flip a coin. If heads, your opponent's Active Pokémon is now Paralyzed.`,fx:'flipPara'}],art:{rx:14,ry:11,feat:'tuft'}},
+  drizzlet:{kind:'pokemon',name:'Drizzlet',stage:'Basic',type:'W',hp:60,weak:'L',retreat:1,
+    attacks:[{name:'Rain Splash',cost:['W'],dmg:20}],art:{rx:15,ry:11,feat:'tuft'}},
+  monsoonray:{kind:'pokemon',name:'Monsoonray',stage:'Stage 1',from:'Drizzlet',type:'W',hp:110,weak:'L',retreat:1,
+    attacks:[{name:'Tidal Glide',cost:['W','C'],dmg:50},{name:'Storm Surge',cost:['W','W','C'],dmg:40,plus:true,text:'This attack does 20 more damage for each Water Energy attached to this Pokémon.',fx:'moreType'}],art:{rx:24,ry:11,feat:'fin'}},
+  coralhorn:{kind:'pokemon',name:'Coralhorn',stage:'Basic',type:'W',hp:80,weak:'L',retreat:1,
+    attacks:[{name:'Reef Jab',cost:['W','C'],dmg:30,text:`Discard an Energy from your opponent's Active Pokémon.`,fx:'discardOppE'}],art:{rx:13,ry:15,feat:'antlers'}},
+  leviathorn:{kind:'pokemon',name:'Leviathorn ex',ex:true,stage:'Basic',type:'W',hp:200,weak:'L',retreat:3,
+    attacks:[{name:'Undertow',cost:['W','C'],dmg:60},{name:'Abyssal Crush',cost:['W','W','C','C'],dmg:160}],art:{rx:25,ry:17,feat:'spikes'}},
+  thistlit:{kind:'pokemon',name:'Thistlit',stage:'Basic',type:'G',hp:60,weak:'F',retreat:1,
+    attacks:[{name:'Prickle',cost:['G'],dmg:20}],art:{rx:14,ry:12,feat:'spikes'}},
+  brambleboar:{kind:'pokemon',name:'Brambleboar',stage:'Stage 1',from:'Thistlit',type:'G',hp:120,weak:'F',retreat:2,
+    attacks:[{name:'Thorn Charge',cost:['G','C'],dmg:50},{name:'Bramble Rampage',cost:['G','G','C'],dmg:40,plus:true,text:'This attack does 10 more damage for each 10 damage on this Pokémon.',fx:'rage'}],art:{rx:22,ry:16,feat:'spikes'}},
+  petalmoth:{kind:'pokemon',name:'Petalmoth',stage:'Basic',type:'G',hp:70,weak:'F',retreat:1,
+    attacks:[{name:'Soothing Scent',cost:['G'],dmg:10,text:'Heal 30 damage from this Pokémon.',fx:'heal30'},{name:'Petal Gust',cost:['G','C'],dmg:30}],art:{rx:15,ry:12,feat:'tuft'}},
+  mosswisp:{kind:'pokemon',name:'Mosswisp',stage:'Basic',type:'G',hp:80,weak:'F',retreat:1,
+    attacks:[{name:'Wisp Tap',cost:['G'],dmg:10,text:'Draw a card.',fx:'draw1'},{name:'Sap Drain',cost:['G','G'],dmg:40,text:'Heal 30 damage from this Pokémon.',fx:'heal30'}],art:{rx:15,ry:14,feat:'leaf'}},
+  coilbug:{kind:'pokemon',name:'Coilbug',stage:'Basic',type:'L',hp:50,weak:'G',retreat:1,
+    attacks:[{name:'Charge Bite',cost:['L'],dmg:20}],art:{rx:14,ry:11,feat:'antlers'}},
+  teslamander:{kind:'pokemon',name:'Teslamander',stage:'Stage 1',from:'Coilbug',type:'L',hp:110,weak:'G',retreat:2,
+    attacks:[{name:'Spark Tail',cost:['L','C'],dmg:50,text:`Flip a coin. If heads, your opponent's Active Pokémon is now Paralyzed.`,fx:'flipPara'},{name:'Overload',cost:['L','L','C'],dmg:30,plus:true,text:'This attack does 20 more damage for each Lightning Energy attached to this Pokémon.',fx:'moreType'}],art:{rx:21,ry:13,feat:'fin'}},
+  ampereel:{kind:'pokemon',name:'Ampereel',stage:'Basic',type:'L',hp:80,weak:'G',retreat:2,
+    attacks:[{name:'Static Field',cost:['L','C'],dmg:30,text:`This attack also does 10 damage to each of your opponent's Benched Pokémon.`,fx:'bench10'}],art:{rx:20,ry:11,feat:'fin'}},
+  fluxfly:{kind:'pokemon',name:'Fluxfly',stage:'Basic',type:'L',hp:50,weak:'G',retreat:0,
+    attacks:[{name:'Double Zap',cost:['L'],dmg:20,mult:true,text:'Flip 2 coins. This attack does 20 damage for each heads.',fx:'flip2x20'}],art:{rx:12,ry:11,feat:'tuft'}},
+  scrapjay:{kind:'pokemon',name:'Scrapjay',stage:'Basic',type:'C',hp:60,weak:'L',retreat:1,
+    attacks:[{name:'Peck',cost:['C'],dmg:10},{name:'Pilfer',cost:['C','C'],dmg:20,text:'Draw a card.',fx:'draw1'}],art:{rx:13,ry:12,feat:'tuft'}},
+  gustcrow:{kind:'pokemon',name:'Gustcrow',stage:'Stage 1',from:'Scrapjay',type:'C',hp:100,weak:'L',retreat:1,
+    attacks:[{name:'Gale Strike',cost:['C','C'],dmg:50},{name:'Squad Swoop',cost:['C','C','C'],dmg:30,plus:true,text:'This attack does 10 more damage for each of your Benched Pokémon.',fx:'perBench10'}],art:{rx:19,ry:14,feat:'tuft'}},
+  lumberbear:{kind:'pokemon',name:'Lumberbear',stage:'Basic',type:'C',hp:130,weak:'L',retreat:3,
+    attacks:[{name:'Heavy Swipe',cost:['C','C','C'],dmg:60},{name:'Timber Slam',cost:['C','C','C','C'],dmg:100}],art:{rx:23,ry:18,feat:'ears'}},
+  mimicat:{kind:'pokemon',name:'Mimicat',stage:'Basic',type:'C',hp:70,weak:'L',retreat:1,
+    attacks:[{name:'Pounce',cost:['C'],dmg:10,plus:true,text:'Flip a coin. If heads, this attack does 20 more damage.',fx:'flip20'},{name:'Copy Claw',cost:['C','C'],dmg:30}],art:{rx:15,ry:12,feat:'ears'}},
   potion:{kind:'item',name:'Potion',text:'Heal 30 damage from 1 of your Pokémon.'},
+  healingberry:{kind:'item',name:'Healing Berry',text:'Heal 40 damage from your Active Pokémon.'},
+  antidoteherb:{kind:'item',name:'Antidote Herb',text:'Heal 20 damage from your Active Pokémon and remove all Special Conditions from it.'},
+  greatball:{kind:'item',name:'Great Ball',text:'Look at the top 7 cards of your deck. Put a Pokémon you find there into your hand, then shuffle your deck.'},
+  retriever:{kind:'item',name:'Pokémon Retriever',text:'Put a Pokémon from your discard pile into your hand.'},
+  energysearch:{kind:'item',name:'Energy Search',text:'Search your deck for a basic Energy card, reveal it, and put it into your hand. Then shuffle your deck.'},
+  sparebattery:{kind:'item',name:'Spare Battery',text:'Attach a basic Energy card from your discard pile to 1 of your Benched Pokémon.'},
+  lecture:{kind:'supporter',name:`Professor's Lecture`,text:'Discard your hand and draw 7 cards.'},
+  fieldmedic:{kind:'supporter',name:'Field Medic',text:'Heal 30 damage from each of your Pokémon.'},
+  swappartner:{kind:'supporter',name:'Swap Partner',text:'Each player shuffles their hand into their deck. Then you draw 5 cards and your opponent draws 4 cards.'},
+  rushorders:{kind:'supporter',name:'Rush Orders',text:'Search your deck for an Evolution card, reveal it, and put it into your hand. Then shuffle your deck.'},
+  superpotion:{kind:'item',name:'Super Potion',text:'Heal 60 damage from 1 of your Pokémon. If you healed any damage, discard an Energy from that Pokémon.'},
+  energyretrieval:{kind:'item',name:'Energy Retrieval',text:'Put up to 2 basic Energy cards from your discard pile into your hand.'},
+  peptalk:{kind:'supporter',name:'Pep Talk',text:'Draw cards until you have 6 cards in your hand.'},
+  lurewhistle:{kind:'supporter',name:'Lure Whistle',text:`Switch 1 of your opponent's Benched Pokémon with their Active Pokémon.`},
   switch:{kind:'item',name:'Switch',text:'Switch your Active Pokémon with 1 of your Benched Pokémon.'},
   fieldguide:{kind:'item',name:'Field Guide',text:'Search your deck for a Basic Pokémon, reveal it, and put it into your hand. Then shuffle your deck.'},
   research:{kind:'supporter',name:'Research Lead',text:'Draw 3 cards.'},
   fireE:{kind:'energy',name:'Fire Energy',type:'F'},
   grassE:{kind:'energy',name:'Grass Energy',type:'G'},
-  waterE:{kind:'energy',name:'Water Energy',type:'W'}
+  waterE:{kind:'energy',name:'Water Energy',type:'W'},
+  lightningE:{kind:'energy',name:'Lightning Energy',type:'L'}
 };
 for (const k in DEF) DEF[k].id = k;
+/* Four 30-card decks. Weakness runs in a loop: Fire beats Grass, Grass beats Lightning, Lightning beats Water, Water beats Fire. */
 const DECKS = {
-  me:{cindlet:4,pyrrox:3,magmaw:1,puffkin:2,potion:2,switch:2,fieldguide:2,research:3,fireE:11},
-  ai:{budling:4,thornoak:3,ripplet:2,stag:1,potion:2,fieldguide:2,research:3,grassE:9,waterE:4}
+  blaze:{name:'Blaze', type:'F', star:'pyrrox', blurb:'Fire. Hard hitters that grow stronger with every Energy.',
+    list:{cindlet:2,pyrrox:2,magmaw:1,flintkit:2,forgehound:1,cinderbat:2,blazewing:1,scorchtoise:1,kindlemoth:1,potion:1,switch:1,fieldguide:1,greatball:1,research:1,peptalk:1,rushorders:1,energyretrieval:1,fireE:9}},
+  thicket:{name:'Thicket', type:'G', star:'stag', blurb:'Grass. Poison wears opponents down, then Mycolord finishes them.',
+    list:{budling:2,thornoak:1,sporelet:2,mycolord:2,stag:1,thistlit:2,brambleboar:1,petalmoth:1,mosswisp:1,potion:1,healingberry:1,fieldmedic:1,lurewhistle:1,fieldguide:1,research:1,rushorders:1,antidoteherb:1,grassE:9}},
+  tide:{name:'Tide', type:'W', star:'leviathorn', blurb:'Water. Sturdy Pokémon that heal, strip Energy and outlast.',
+    list:{ripplet:2,tidalisk:2,pebbleshell:1,drizzlet:2,monsoonray:1,coralhorn:2,leviathorn:1,lumberbear:1,superpotion:1,switch:1,fieldguide:1,greatball:1,research:1,lecture:1,energysearch:1,sparebattery:1,waterE:10}},
+  storm:{name:'Storm', type:'L', star:'stormwing', blurb:'Lightning. Fast attackers that Paralyze and spread damage.',
+    list:{zappup:2,voltwolf:1,stormwing:1,coilbug:2,teslamander:1,ampereel:1,fluxfly:2,scrapjay:2,gustcrow:1,potion:1,lurewhistle:1,switch:1,fieldguide:1,research:1,swappartner:1,energyretrieval:1,sparebattery:1,lightningE:9}},
+  wild:{name:'Wild', type:'C', star:'lumberbear', blurb:'Colorless. Any Energy powers them, so they are never stuck.',
+    list:{puffkin:2,burrowbun:2,ironhorn:2,mimicat:2,lumberbear:1,scrapjay:2,gustcrow:1,potion:1,retriever:1,switch:1,greatball:1,research:1,peptalk:1,swappartner:1,fieldmedic:1,fireE:5,waterE:5}}
+};
+const COUNTER = {F:'W', W:'L', L:'G', G:'F', C:'L'};
+const DIFFS = {
+  easy:{name:'Easy', blurb:'Makes mistakes and sometimes forgets to attack. Good for your first games.'},
+  normal:{name:'Normal', blurb:'Plays the basics well: attaches every turn, evolves, and takes Knock Outs.'},
+  hard:{name:'Hard', blurb:'Plans each turn, sets up Knock Outs and retreats out of danger. With a random deck, it picks the type yours is weak to.'}
 };
 
 /* ME is the player index this device controls: 0 offline and for the host, 1 for a guest. */
-let UID = 0, GEN = 0, S, ME = 0, MENU = true;
+let UID = 0, GEN = 0, S, ME = 0, MENU = true, MENU_VIEW = 'home', GALLERY = 'all';
+function loadRival(){ const d={deck:'blaze',diff:'normal',opp:'random'}; try { return Object.assign(d, JSON.parse(localStorage.getItem('ba-rival')||'{}')); } catch(e){ return d; } }
+const RIVAL = loadRival();
+function saveRival(){ try { localStorage.setItem('ba-rival', JSON.stringify(RIVAL)); } catch(e){} }
 let rand = Math.random;
 function mulberry32(a){ return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
 const mk = id => ({uid:++UID,id});
@@ -69,7 +164,7 @@ function log(m, w){ S.log.unshift({m,w}); if (S.log.length>80) S.log.pop(); }
 
 /* ---------- art ---------- */
 function eIcon(t){ return `<span class="ei t-${t}" title="${TYPE[t].n}"><svg viewBox="0 0 24 24"><path d="${TYPE[t].g}"/></svg></span>`; }
-const ART = ['cindlet','pyrrox','magmaw','puffkin','budling','thornoak','ripplet','stag','potion','switch','fieldguide','research','fireE','grassE','waterE'];
+const ART = Object.keys(DEF);
 function art(id){
   const svg = artSvg(id);
   if (!ART.includes(id)) return svg;
@@ -118,7 +213,7 @@ function fullCard(id){
     ${d.attacks.map(a=>`<div class="fc-atk">
       <span class="part cost" data-part="cost">${a.cost.map(eIcon).join('')}</span>
       <span class="atk-main"><b>${a.name}</b>${a.text?`<span class="part atk-text" data-part="text">${a.text}</span>`:''}</span>
-      <span class="part dmg" data-part="damage">${a.dmg||''}</span></div>`).join('')}
+      <span class="part dmg" data-part="damage">${a.dmg||''}${a.mult?'×':''}${a.plus?'+':''}</span></div>`).join('')}
     ${d.ex?`<div class="part fc-rule" data-part="rule"><b>Pokémon ex rule:</b> When your Pokémon ex is Knocked Out, your opponent takes 2 Prize cards.</div>`:''}
     <div class="fc-foot">
       <span class="part" data-part="weakness"><small>Weakness</small><span class="val">${d.weak?eIcon(d.weak)+'×2':'—'}</span></span>
@@ -150,8 +245,17 @@ function canPay(en, cost){
   return left >= cost.filter(t=>t==='C').length;
 }
 function costText(cost){ const n={}; cost.forEach(t=>n[t]=(n[t]||0)+1); return Object.entries(n).map(([t,k])=>`${k} ${TYPE[t].n}`).join(' + '); }
-function calcDamage(att, def, atk){
-  let d = atk.dmg||0; const notes = [];
+const ownerOf = m => S.players.find(p => inPlay(p).includes(m));
+function bonus(att, def, atk){
+  if (atk.fx==='moreF') return 20*att.energy.filter(e=>D(e).type==='F').length;
+  if (atk.fx==='moreType') return 20*att.energy.filter(e=>D(e).type===topC(att).type).length;
+  if (atk.fx==='poisonBonus' && def && def.poisoned) return 60;
+  if (atk.fx==='rage') return att.damage;
+  if (atk.fx==='perBench10'){ const o=ownerOf(att); return o ? 10*o.bench.length : 0; }
+  return 0;
+}
+function calcDamage(att, def, atk, extra=0){
+  let d = (atk.dmg||0) + bonus(att,def,atk) + extra; const notes = [];
   if (!d || !def) return {d, notes};
   if (topC(def).weak===topC(att).type){ d*=2; notes.push('Weakness ×2'); }
   if (topC(def).resist===topC(att).type){ d=Math.max(0,d-30); notes.push('Resistance −30'); }
@@ -185,7 +289,21 @@ function whyNotTrainer(pi,c){
     if (p.supporterPlayed) return 'You already played a Supporter this turn. Only one per turn.';
     if (S.turn===1) return `The player who goes first can't play a Supporter on their first turn.`;
   }
-  if (d.id==='potion' && !inPlay(p).some(m=>m.damage>0)) return 'None of your Pokémon have damage to heal.';
+  if ((d.id==='potion'||d.id==='superpotion') && !inPlay(p).some(m=>m.damage>0)) return 'None of your Pokémon have damage to heal.';
+  if (d.id==='energyretrieval' && !p.discard.some(c=>D(c).kind==='energy')) return 'There are no Energy cards in your discard pile.';
+  if (d.id==='peptalk' && p.hand.length-1>=6) return 'You already have 6 or more cards in your hand.';
+  if (d.id==='peptalk' && !p.deck.length) return 'Your deck is empty.';
+  if (d.id==='lurewhistle' && !P(1-pi).bench.length) return `Your opponent has no Benched Pokémon to lure out.`;
+  if (d.id==='healingberry' && !p.active.damage) return 'Your Active Pokémon has no damage to heal.';
+  if (d.id==='antidoteherb' && !p.active.damage && !p.active.poisoned && !p.active.paralyzed) return 'Your Active Pokémon has no damage or Special Conditions.';
+  if (d.id==='greatball' && !p.deck.length) return 'Your deck is empty.';
+  if (d.id==='retriever' && !p.discard.some(c=>D(c).kind==='pokemon')) return 'There are no Pokémon in your discard pile.';
+  if (d.id==='energysearch' && !p.deck.some(c=>D(c).kind==='energy')) return 'There are no Energy cards left in your deck.';
+  if (d.id==='sparebattery' && !p.discard.some(c=>D(c).kind==='energy')) return 'There are no Energy cards in your discard pile.';
+  if (d.id==='sparebattery' && !p.bench.length) return 'You need a Benched Pokémon to attach the Energy to.';
+  if (d.id==='lecture' && !p.deck.length) return 'Your deck is empty.';
+  if (d.id==='fieldmedic' && !inPlay(p).some(m=>m.damage>0)) return 'None of your Pokémon have damage to heal.';
+  if (d.id==='rushorders' && !p.deck.some(c=>D(c).stage==='Stage 1')) return 'There are no Evolution cards left in your deck.';
   if (d.id==='switch' && !p.bench.length) return 'You need a Benched Pokémon to switch with.';
   if (d.id==='fieldguide' && !p.deck.some(isBasic)) return 'There are no Basic Pokémon left in your deck.';
   if (d.id==='research' && !p.deck.length) return 'Your deck is empty.';
@@ -194,6 +312,7 @@ function whyNotTrainer(pi,c){
 function whyNotRetreat(pi){
   const p=P(pi), a=p.active;
   if (S.setup) return 'Finish setup first.';
+  if (a.paralyzed) return `${topC(a).name} is Paralyzed and can't retreat this turn.`;
   if (p.retreated) return 'You already retreated this turn. You can retreat once per turn.';
   if (!p.bench.length) return 'You need a Benched Pokémon to take its place.';
   if (a.energy.length<topC(a).retreat) return `Retreating ${topC(a).name} costs ${topC(a).retreat} Energy and it has ${a.energy.length}.`;
@@ -203,6 +322,7 @@ function whyNotAttack(pi,i){
   const a=P(pi).active, atk=topC(a).attacks[i];
   if (S.setup) return 'Finish setup first.';
   if (S.turn===1) return `The player who goes first can't attack on their first turn.`;
+  if (a.paralyzed) return `${topC(a).name} is Paralyzed and can't attack this turn.`;
   if (!canPay(a.energy, atk.cost)) return `Needs ${costText(atk.cost)} Energy. ${topC(a).name} has ${a.energy.length?costText(a.energy.map(e=>D(e).type)):'none'}.`;
   return '';
 }
@@ -228,7 +348,7 @@ function doAttach(pi,cuid,muid){
 }
 function doEvolve(pi,cuid,muid){
   const p=P(pi), m=findMon(p,muid), c=take(p,cuid), old=topC(m).name;
-  m.stack.push(c); m.turnPlayed=S.turn; m.poisoned=false;
+  m.stack.push(c); m.turnPlayed=S.turn; m.poisoned=m.paralyzed=false;
   log(`${who(pi)} evolved ${old} into ${D(c).name}. It keeps its Energy and damage.`,pi); ev('evolve');
 }
 function doTrainer(pi,cuid,arg){
@@ -236,17 +356,43 @@ function doTrainer(pi,cuid,arg){
   p.discard.push(c);
   if (d.kind==='supporter'){ p.supporterPlayed=true; ev('supporter'); }
   if (d.id==='potion'){ const m=findMon(p,arg), h=Math.min(30,m.damage); m.damage-=h; log(`${who(pi)} played Potion and healed ${h} damage from ${topC(m).name}.`,pi); ev('potion'); }
-  if (d.id==='switch'){ const k=p.bench.findIndex(m=>m.uid===arg), old=p.active; old.poisoned=false; p.active=p.bench[k]; p.bench[k]=old;
+  if (d.id==='switch'){ const k=p.bench.findIndex(m=>m.uid===arg), old=p.active; old.poisoned=old.paralyzed=false; p.active=p.bench[k]; p.bench[k]=old;
     log(`${who(pi)} played Switch. ${topC(p.active).name} is now Active and ${topC(old).name} went to the Bench.`,pi); ev('switch'); }
   if (d.id==='fieldguide'){ const k=p.deck.findIndex(x=>x.id===arg), [b]=p.deck.splice(k,1); p.hand.push(b); shuffle(p.deck);
     log(`${who(pi)} played Field Guide and took ${D(b).name} from the deck.`,pi); ev('item'); }
   if (d.id==='research'){ const n=Math.min(3,p.deck.length); for (let i=0;i<n;i++) p.hand.push(p.deck.pop());
     log(`${who(pi)} played Research Lead and drew ${n} cards.`,pi); }
+  if (d.id==='superpotion'){ const m=findMon(p,arg), h=Math.min(60,m.damage); m.damage-=h; let extra='';
+    if (h && m.energy.length){ p.discard.push(m.energy.pop()); extra=' and discarded an Energy from it'; }
+    log(`${who(pi)} played Super Potion, healed ${h} damage from ${topC(m).name}${extra}.`,pi); ev('potion'); }
+  if (d.id==='energyretrieval'){ let n=0; for (let i=p.discard.length-1;i>=0&&n<2;i--) if (D(p.discard[i]).kind==='energy'){ p.hand.push(p.discard.splice(i,1)[0]); n++; }
+    log(`${who(pi)} played Energy Retrieval and put ${n} Energy back into their hand.`,pi); }
+  if (d.id==='peptalk'){ let n=0; while (p.hand.length<6 && p.deck.length){ p.hand.push(p.deck.pop()); n++; }
+    log(`${who(pi)} played Pep Talk and drew ${n} card${n===1?'':'s'}.`,pi); }
+  if (d.id==='healingberry'){ const a=p.active, h=Math.min(40,a.damage); a.damage-=h; log(`${who(pi)} played Healing Berry and healed ${h} damage from ${topC(a).name}.`,pi); ev('potion'); }
+  if (d.id==='antidoteherb'){ const a=p.active, h=Math.min(20,a.damage); a.damage-=h; a.poisoned=a.paralyzed=false; log(`${who(pi)} played Antidote Herb on ${topC(a).name}: healed ${h} damage and cleared its Special Conditions.`,pi); }
+  if (d.id==='greatball'){ const top7=p.deck.slice(-7).reverse(), f=top7.find(c=>D(c).kind==='pokemon');
+    if (f){ p.deck.splice(p.deck.indexOf(f),1); p.hand.push(f); } shuffle(p.deck);
+    log(f?`${who(pi)} played Great Ball and found ${D(f).name}.`:`${who(pi)} played Great Ball but found no Pokémon in the top 7 cards.`,pi); }
+  if (d.id==='retriever' || d.id==='energysearch' || d.id==='rushorders'){
+    const src = d.id==='retriever' ? p.discard : p.deck, k=src.map(x=>x.id).lastIndexOf(arg), [c2]=src.splice(k,1); p.hand.push(c2);
+    if (src===p.deck) shuffle(p.deck);
+    log(`${who(pi)} played ${d.name} and took ${D(c2).name}${src===p.deck?' from the deck':' from the discard pile'}.`,pi); }
+  if (d.id==='sparebattery'){ const m=findMon(p,arg), k=p.discard.map(c=>D(c).kind).lastIndexOf('energy'), [e]=p.discard.splice(k,1); m.energy.push(e);
+    log(`${who(pi)} played Spare Battery and attached ${D(e).name} to ${topC(m).name}.`,pi); }
+  if (d.id==='lecture'){ p.discard.push(...p.hand.splice(0)); const n=Math.min(7,p.deck.length); for (let i=0;i<n;i++) p.hand.push(p.deck.pop());
+    log(`${who(pi)} played Professor's Lecture, discarded their hand and drew ${n} cards.`,pi); }
+  if (d.id==='fieldmedic'){ inPlay(p).forEach(m=>m.damage=Math.max(0,m.damage-30)); log(`${who(pi)} played Field Medic and healed 30 damage from each of their Pokémon.`,pi); ev('potion'); }
+  if (d.id==='swappartner'){ const o=P(1-pi);
+    for (const [pl,n] of [[p,5],[o,4]]){ pl.deck.push(...pl.hand.splice(0)); shuffle(pl.deck); for (let i=0;i<n&&pl.deck.length;i++) pl.hand.push(pl.deck.pop()); }
+    log(pi===ME?'You played Swap Partner. You drew 5 cards and your opponent drew 4.':`${oppName()} played Swap Partner. They drew 5 cards and you drew 4.`,pi); }
+  if (d.id==='lurewhistle'){ const o=P(1-pi), k=o.bench.findIndex(m=>m.uid===arg), old=o.active; old.poisoned=old.paralyzed=false; o.active=o.bench[k]; o.bench[k]=old;
+    log(`${who(pi)} played Lure Whistle and pulled ${topC(o.active).name} into the Active Spot.`,pi); ev('lure'); }
 }
 function doRetreat(pi,buid){
   const p=P(pi), a=p.active, n=topC(a).retreat;
   p.discard.push(...a.energy.splice(a.energy.length-n, n));
-  a.poisoned=false;
+  a.poisoned=a.paralyzed=false;
   const k=p.bench.findIndex(m=>m.uid===buid); p.active=p.bench[k]; p.bench[k]=a; p.retreated=true;
   log(`${who(pi)} retreated ${topC(a).name}, discarding ${n} Energy. ${topC(p.active).name} is now Active.`,pi); ev('retreat');
 }
@@ -267,9 +413,19 @@ function aiPromote(){
 }
 function doAttack(pi,i){
   const p=P(pi), o=P(1-pi), a=p.active, d=o.active, atk=topC(a).attacks[i];
-  const r=calcDamage(a,d,atk);
+  const flip = () => { const h=rand()<.5; log(`Coin flip: ${h?'heads':'tails'}.`,pi); return h; };
+  let extra = atk.fx==='flip20' && flip() ? 20 : 0;
+  if (atk.fx==='flip2x20'){ const h=(flip()?1:0)+(flip()?1:0); extra = 20*h - atk.dmg; }
+  const r=calcDamage(a,d,atk,extra);
   d.damage+=r.d; S.hit=d.uid;
   log(`${topC(a).name} used ${atk.name} on ${topC(d).name} for ${r.d} damage${r.notes.length?` (${r.notes.join(', ')})`:''}.`,pi);
+  if (atk.fx==='self20'){ a.damage+=20; log(`${topC(a).name} also did 20 damage to itself.`,pi); }
+  if (atk.fx==='snipe30' && o.bench.length){ const t=[...o.bench].sort((x,y)=>hpLeft(x)-hpLeft(y))[0]; t.damage+=30; log(`${atk.name} also did 30 damage to ${topC(t).name} on the Bench.`,pi); }
+  if (atk.fx==='discardOppE' && d.energy.length){ o.discard.push(d.energy.pop()); log(`${atk.name} discarded an Energy from ${topC(d).name}.`,pi); }
+  if (atk.fx==='heal30'){ const h=Math.min(30,a.damage); a.damage-=h; if (h) log(`${topC(a).name} healed ${h} damage.`,pi); }
+  if (atk.fx==='bench10' && o.bench.length){ o.bench.forEach(m=>m.damage+=10); log(`${atk.name} also did 10 damage to each of ${pi===ME?'your opponent\'s':'your'} Benched Pokémon.`,pi); }
+  if (atk.fx==='draw1' && p.deck.length){ const c=p.deck.pop(); p.hand.push(c); log(`${who(pi)} drew ${pi===ME?D(c).name:'a card'}.`,pi); }
+  if (atk.fx==='flipPara' && d.damage<topC(d).hp && flip()){ d.paralyzed=true; log(`${topC(d).name} is now Paralyzed.`,pi); }
   if (atk.fx==='discardF'){ const k=a.energy.findIndex(e=>D(e).type==='F'); if (k>=0){ p.discard.push(...a.energy.splice(k,1)); log(`${topC(a).name} discarded a Fire Energy.`,pi);} }
   if (atk.fx==='self30'){ a.damage+=30; log(`${topC(a).name} also did 30 damage to itself.`,pi); }
   if (atk.fx==='poison' && d.damage<topC(d).hp){ d.poisoned=true; log(`${topC(d).name} is now Poisoned.`,pi); }
@@ -296,7 +452,7 @@ function resolveAfterDamage(next){
   for (const pi of [S.cur,1-S.cur]) for (const m of inPlay(P(pi))) if (m.damage>=topC(m).hp) knockOut(pi,m);
   if (checkWin()){ render(); return; }
   const need=[0,1].filter(pi=>!P(pi).active && P(pi).bench.length);
-  for (const pi of need) if (P(pi).isAI) aiPromote();
+  for (const pi of need) if (P(pi).isAI) aiPromote(S.diff);
   const wait=need.filter(pi=>!P(pi).isAI);
   if (wait.length){
     S.promoteWait=new Set(wait); S.after=next; S.busy=false;
@@ -316,6 +472,7 @@ function endTurn(){
   clearUI();
   if (S.mode==='lesson'){ S.locked=true; render(); return; }
   for (const pi of [0,1]){ const a=P(pi).active; if (a && a.poisoned){ a.damage+=10; log(`Pokémon Checkup: ${topC(a).name} took 10 Poison damage.`); } }
+  const ca=P(S.cur).active; if (ca && ca.paralyzed){ ca.paralyzed=false; log(`Pokémon Checkup: ${topC(ca).name} is no longer Paralyzed.`); }
   resolveAfterDamage(() => startTurn(1-S.cur));
 }
 function startTurn(pi){
@@ -359,35 +516,168 @@ function applyAction(a){
   }
 }
 
-/* ---------- rival AI (offline match) ---------- */
-function aiEnergyTarget(p){
-  const need = m => topC(m).attacks.some(a => !canPay(m.energy,a.cost));
-  if (need(p.active)) return p.active;
-  return [...p.bench].sort((a,b)=>topC(b).hp-topC(a).hp).find(need) || null;
+/* ---------- rival AI (offline match): easy / normal / hard ---------- */
+const AI_DELAY = {ms:650};
+const HARD_OFF = {};
+const ENERGY_FOR = {F:'fireE',W:'waterE',G:'grassE',L:'lightningE',C:'fireE'};
+const canHit = m => !m.paralyzed && topC(m).attacks.some(a=>canPay(m.energy,a.cost));
+const expBonus = atk => atk.fx==='flip20' ? 10 : atk.fx==='flip2x20' ? 0 : 0;
+// Best expected damage `att` can do to `def`, optionally pretending it has one more Energy of its type.
+function bestHit(att, def, plusOne=false){
+  if (!att || !def) return {d:0,i:-1};
+  const en = plusOne ? att.energy.concat([{id:ENERGY_FOR[topC(att).type]}]) : att.energy;
+  let best={d:0,i:-1};
+  topC(att).attacks.forEach((a,i)=>{
+    if (!canPay(en,a.cost)) return;
+    const r=calcDamage(plusOne?{...att,energy:en}:att, def, a, expBonus(a));
+    if (r.d>best.d || best.i<0) best={d:r.d,i};
+  });
+  return best;
+}
+const threat = m => P(0).active ? bestHit(P(0).active, m, true).d : 0;
+function aiPromote(diff='normal'){
+  const p=P(1), o=P(0).active;
+  let best;
+  if (diff==='easy') best=p.bench[Math.random()*p.bench.length|0];
+  else if (diff==='hard' && !HARD_OFF.promote) best=[...p.bench].sort((a,b)=>score(b)-score(a))[0];
+  else best=[...p.bench].sort((a,b)=>(b.energy.length*25+hpLeft(b))-(a.energy.length*25+hpLeft(a)))[0];
+  function score(m){ return bestHit(m,o).d*1.5 + bestHit(m,o,true).d*.5 + hpLeft(m)*.5 - (o&&topC(m).weak===topC(o).type?80:0) - (topC(m).ex?40:0); }
+  doPromote(1,best.uid);
 }
 async function runAI(){
-  const g=S.gen, p=P(1);
+  const g=S.gen, p=P(1), o=P(0), diff=S.diff||'normal';
   S.busy=true; render();
-  const step = async () => { render(); await sleep(700); return S.gen===g && !S.over; };
+  const step = async () => { render(); await sleep(AI_DELAY.ms); return S.gen===g && !S.over; };
   if (!await step()) return;
-  if (S.turn!==1 && !p.supporterPlayed){ const r=p.hand.find(c=>c.id==='research'); if (r && p.hand.length<=5 && p.deck.length>6){ doTrainer(1,r.uid); if (!await step()) return; } }
+  const card = id => p.hand.find(c=>c.id===id && !whyNotTrainer(1,c));
+  const play = async (id,arg) => { const c=card(id); if (!c) return true; doTrainer(1,c.uid,arg); return step(); };
+  const roll = x => Math.random()<x;
+  const evoFor = m => p.hand.find(c=>D(c).from===topC(m).name);
+
+  if (diff==='easy'){
+    if (roll(.3) && card('research') && !(await play('research'))) return;
+    for (const c of p.hand.filter(isBasic)) if (p.bench.length<2){ doBench(1,c.uid); if (!await step()) return; }
+    for (const c of p.hand.filter(c=>D(c).stage==='Stage 1')){ const t=inPlay(p).find(m=>!whyNotEvolve(1,c,m)); if (t && roll(.5)){ doEvolve(1,c.uid,t.uid); if (!await step()) return; } }
+    if (p.active.damage>=40 && roll(.4) && card('potion') && !(await play('potion',p.active.uid))) return;
+    const en=p.hand.find(c=>D(c).kind==='energy');
+    if (en && roll(.6)){ const ip=inPlay(p), t=ip[Math.random()*ip.length|0]; doAttach(1,en.uid,t.uid); if (!await step()) return; }
+    S.busy=false;
+    const opts=topC(p.active).attacks.map((a,i)=>i).filter(i=>!whyNotAttack(1,i));
+    if (opts.length && roll(.85)) return doAttack(1,opts[Math.random()*opts.length|0]);
+    log('Rival ended their turn.',1); return endTurn();
+  }
+
+  // ---- draw and search (normal + hard) ----
+  if (S.turn!==1 && !p.supporterPlayed){
+    if (p.hand.length<=2 && card('lecture')){ if (!await play('lecture')) return; }
+    else if (p.hand.length<=3 && card('peptalk')){ if (!await play('peptalk')) return; }
+    else if (p.hand.length<=4 && card('research') && p.deck.length>6){ if (!await play('research')) return; }
+  }
+  if (p.bench.length<4 && card('greatball')){ if (!await play('greatball')) return; }
   let fg;
-  while ((fg=p.hand.find(c=>c.id==='fieldguide')) && p.deck.some(isBasic) && p.bench.length<4){ doTrainer(1,fg.uid,p.deck.find(isBasic).id); if (!await step()) return; }
+  while ((fg=card('fieldguide')) && p.bench.length<4){
+    const basics=p.deck.filter(isBasic);
+    const pick = (diff==='hard' && basics.find(b=>p.hand.some(c=>D(c).from===D(b).name))) || basics.find(b=>D(b).ex) || basics[0];
+    doTrainer(1,fg.uid,pick.id); if (!await step()) return;
+  }
+  if (p.bench.length<3 && card('retriever')){ const pk=p.discard.filter(c=>isBasic(c)).pop(); if (pk && !(await play('retriever',pk.id))) return; }
+  if (!p.supporterPlayed && S.turn!==1 && card('rushorders')){ const t=p.deck.find(c=>D(c).stage==='Stage 1' && inPlay(p).some(m=>topC(m).name===D(c).from)); if (t && !(await play('rushorders',t.id))) return; }
+  if (!p.hand.some(c=>D(c).kind==='energy')){
+    if (card('energysearch')){ const e=p.deck.find(c=>D(c).kind==='energy'); if (!(await play('energysearch',e.id))) return; }
+    else if (card('energyretrieval')){ if (!(await play('energyretrieval'))) return; }
+  }
   for (const c of p.hand.filter(isBasic)) if (p.bench.length<5){ doBench(1,c.uid); if (!await step()) return; }
   for (const c of p.hand.filter(c=>D(c).stage==='Stage 1')){ const t=inPlay(p).find(m=>!whyNotEvolve(1,c,m)); if (t){ doEvolve(1,c.uid,t.uid); if (!await step()) return; } }
-  const pot=p.hand.find(c=>c.id==='potion');
-  if (pot && p.active.damage>=30){ doTrainer(1,pot.uid,p.active.uid); if (!await step()) return; }
-  const en=p.hand.filter(c=>D(c).kind==='energy');
-  if (en.length && !p.energyAttached){ const t=aiEnergyTarget(p); if (t){ const e=en.find(c=>D(c).type===topC(t).type)||en[0]; doAttach(1,e.uid,t.uid); if (!await step()) return; } }
-  const canHit = m => topC(m).attacks.some(a=>canPay(m.energy,a.cost));
-  if (!p.retreated && p.bench.length && !canHit(p.active) && p.active.energy.length>=topC(p.active).retreat){
+  if ((p.active.poisoned||p.active.paralyzed) && card('antidoteherb')){ if (!await play('antidoteherb')) return; }
+  if (card('sparebattery')){ const t=[...p.bench].sort((a,b)=>topC(b).hp-topC(a).hp).find(m=>topC(m).attacks.some(a=>!canPay(m.energy,a.cost))); if (t && !(await play('sparebattery',t.uid))) return; }
+
+  // ---- hard: plan a Knock Out ----
+  let attachTo=null;
+  const energy = () => p.hand.find(c=>D(c).kind==='energy');
+  const oa = () => o.active;
+  if (diff==='hard' && !HARD_OFF.plan){
+    const a=p.active, need=hpLeft(oa());
+    if (bestHit(a,oa()).d>=need && canHit(a)) attachTo=null;            // already a KO
+    else if (!p.energyAttached && energy() && !a.paralyzed && bestHit(a,oa(),true).d>=need) attachTo=a;
+    else {
+      // Pull a weak Benched Pokémon forward and finish it.
+      const lure=card('lurewhistle');
+      if (lure && !p.supporterPlayed && !a.paralyzed){
+        const canPlus = !p.energyAttached && energy();
+        const t=[...o.bench].filter(b=>bestHit(a,b,!!canPlus).d>=hpLeft(b)).sort((x,y)=>(topC(y).ex?1:0)-(topC(x).ex?1:0))[0];
+        if (t){ doTrainer(1,lure.uid,t.uid); if (!await step()) return; if (bestHit(a,oa()).d<hpLeft(oa())) attachTo=a; }
+      }
+      // Or power up a Benched attacker that can KO, then swap it in.
+      if (!attachTo && !p.energyAttached && energy()){
+        const canSwap = card('switch') || (!whyNotRetreat(1));
+        const b=p.bench.find(m=>bestHit(m,oa(),true).d>=hpLeft(oa()));
+        if (b && canSwap){
+          doAttach(1,energy().uid,b.uid); if (!await step()) return;
+          if (card('switch')){ if (!(await play('switch',b.uid))) return; } else { doRetreat(1,b.uid); if (!await step()) return; }
+        }
+      }
+    }
+  }
+  if (diff==='hard' && !HARD_OFF.survive){
+    // Survive: heal if that prevents a KO, otherwise retreat to something sturdier.
+    const t=threat(p.active), left=hpLeft(p.active);
+    const koNow = canHit(p.active) && bestHit(p.active,oa()).d>=hpLeft(oa());
+    if (!koNow && t>=left){
+      const heal = card('superpotion')&&t<left+60 ? ['superpotion',p.active.uid] : card('healingberry')&&t<left+40 ? ['healingberry'] : card('potion')&&t<left+30 ? ['potion',p.active.uid] : card('fieldmedic')&&!p.supporterPlayed&&t<left+30 ? ['fieldmedic'] : null;
+      if (heal){ if (!(await play(...heal))) return; }
+      else if (p.bench.length && (topC(p.active).ex || p.prizes.length<=2 || !canHit(p.active))){
+        const canPlus = !p.energyAttached && energy();
+        const ready = m => canHit(m) || (canPlus && bestHit(m,oa(),true).i>=0);
+        const better=[...p.bench].filter(m=>ready(m) && threat(m)<hpLeft(m)).sort((x,y)=>bestHit(y,oa(),true).d-bestHit(x,oa(),true).d)[0];
+        if (better){
+          const viaSwitch = !!card('switch');
+          if (viaSwitch || !whyNotRetreat(1)){
+            if (!canHit(better) && canPlus){ doAttach(1,energy().uid,better.uid); if (!await step()) return; }
+            if (viaSwitch){ if (!(await play('switch',better.uid))) return; } else { doRetreat(1,better.uid); if (!await step()) return; }
+          }
+        }
+      }
+    }
+  }
+  if (diff!=='hard') {
+    const pot=card('superpotion')||card('healingberry')||card('potion');
+    if (pot && p.active.damage>=(pot.id==='superpotion'?60:30)){ if (!(await play(pot.id,p.active.uid))) return; }
+    if (card('fieldmedic') && !p.supporterPlayed && inPlay(p).reduce((n,m)=>n+m.damage,0)>=60){ if (!await play('fieldmedic')) return; }
+  }
+
+  // ---- attach Energy ----
+  if (!p.energyAttached && energy()){
+    let t=attachTo;
+    if (!t){
+      const need = m => topC(m).attacks.some(a=>!canPay(m.energy,a.cost));
+      t = need(p.active) ? p.active
+        : [...p.bench].sort((a,b)=>(evoFor(b)?50:0)+topC(b).hp-(evoFor(a)?50:0)-topC(a).hp).find(need) || null;
+    }
+    if (t){ const e=p.hand.find(c=>D(c).kind==='energy'&&D(c).type===topC(t).type)||energy(); doAttach(1,e.uid,t.uid); if (!await step()) return; }
+  }
+  if (!p.retreated && p.bench.length && !canHit(p.active) && !whyNotRetreat(1)){
     const ready=p.bench.find(canHit); if (ready){ doRetreat(1,ready.uid); if (!await step()) return; }
   }
   S.busy=false;
   if (S.turn!==1){
-    const a=p.active; let best=-1, bd=-1;
-    topC(a).attacks.forEach((atk,i)=>{ if (canPay(a.energy,atk.cost)){ const d=calcDamage(a,P(0).active,atk).d; if (d>bd){bd=d;best=i;} } });
-    if (best>=0){ doAttack(1,best); return; }
+    const a=p.active; let best=-1, bs=-1e9;
+    topC(a).attacks.forEach((atk,i)=>{
+      if (whyNotAttack(1,i)) return;
+      const d=calcDamage(a,oa(),atk,expBonus(atk)).d, ko=d>=hpLeft(oa());
+      let sc=d;
+      if (diff==='hard' && !HARD_OFF.score){
+        const self=atk.fx==='self30'?30:atk.fx==='self20'?20:0;
+        if (ko) sc+=500*(topC(oa()).ex?2:1);
+        if (self && self>=hpLeft(a) && !(ko && p.prizes.length<=(topC(oa()).ex?2:1))) sc-=1000;
+        if (atk.fx==='bench10') sc+=10*o.bench.length;
+        if (atk.fx==='snipe30' && o.bench.length) sc+=30;
+        if (atk.fx==='discardOppE' && oa().energy.length) sc+=25;
+        if (atk.fx==='poison' && !oa().poisoned) sc+=20;
+        if (atk.fx==='flipPara') sc+=15;
+      }
+      if (sc>bs){ bs=sc; best=i; }
+    });
+    if (best>=0) return doAttack(1,best);
   }
   log('Rival ended their turn.',1);
   endTurn();
@@ -452,7 +742,7 @@ const LESSONS = [
    build(){ scenario({me:{active:{id:'cindlet',energy:['fireE'],damage:40}, bench:[{id:'puffkin',energy:['fireE','fireE']}]}, op:{active:{id:'ripplet',damage:40}, bench:[{id:'budling'}]}}); },
    check:()=>S.events.includes('retreat') && S.events.includes('attackBy:Puffkin')},
   {key:'conditions', title:'Special Conditions',
-   body:`<p>Some attacks leave a <span class="kbd">Special Condition</span> on the defending Active Pokémon. <span class="kbd">Poisoned</span> means it takes 10 damage during Pokémon Checkup, which happens between every turn.</p><p>Moving a Pokémon to the Bench, by retreating or with a card like Switch, removes all Special Conditions. So does evolving. The real game also has Asleep, Burned, Confused and Paralyzed.</p>`,
+   body:`<p>Some attacks leave a <span class="kbd">Special Condition</span> on the defending Active Pokémon. <span class="kbd">Poisoned</span> means it takes 10 damage during Pokémon Checkup, which happens between every turn.</p><p><span class="kbd">Paralyzed</span> means it can't attack or retreat during its owner's next turn. It wears off at the end of that turn.</p><p>Moving a Pokémon to the Bench, by retreating or with a card like Switch, removes all Special Conditions. So does evolving. The real game also has Asleep, Burned and Confused.</p>`,
    goal:'Cure Cindlet by playing Switch.',
    hint:'Retreating would also work here, but Switch costs no Energy.',
    build(){ scenario({me:{active:{id:'cindlet',energy:['fireE'],damage:30,poisoned:true}, bench:[{id:'puffkin'}]}, op:{active:{id:'thornoak',under:'budling'}}, hand:['switch','fireE']}); },
@@ -474,9 +764,9 @@ function saveDone(set){ try { localStorage.setItem('bench-academy-done', JSON.st
 const DONE = loadDone();
 
 function blank(li){ return {gen:++GEN,li,mode:'lesson',online:false,players:[],cur:0,turn:5,ui:{sel:null,mode:null,data:null},log:[],events:[],over:null,overHidden:false,busy:false,locked:false,setup:false,ready:[false,false],after:null,promoteWait:null,actions:[],seed:0,replaying:false,done:false,part:'hp',partsSeen:new Set(),acard:'pyrrox',hit:null}; }
-function goMenu(){
+function goMenu(view='home'){
   if (S && LESSONS[S.li].kind==='online') leaveOnline();
-  ME=0; rand=Math.random; S=blank(0); MENU=true;
+  ME=0; rand=Math.random; S=blank(0); MENU=true; MENU_VIEW=view;
   render(); window.scrollTo(0,0);
 }
 function nextLesson(){ const i=LESSONS.findIndex((l,k)=>k<PLAY_IDX && !DONE.has(l.key)); return i<0 ? 0 : i; }
@@ -488,7 +778,14 @@ function goLesson(i){
   if (S && LESSONS[S.li].kind==='online' && L.kind!=='online') leaveOnline();
   ME=0; rand=Math.random;
   S=blank(i);
-  if (L.kind==='match'){ S.mode='match'; startMatch(); }
+  if (L.kind==='match'){
+    S.mode='match'; S.myDeck=DECKS[RIVAL.deck]?RIVAL.deck:'blaze'; S.diff=DIFFS[RIVAL.diff]?RIVAL.diff:'normal';
+    const others=Object.keys(DECKS).filter(k=>k!==S.myDeck);
+    // On Hard with a random Rival deck, the Rival counter-picks: it brings the type your Pokémon are weak to.
+    const counter = others.find(k => DECKS[k].type===COUNTER[DECKS[S.myDeck].type]);
+    S.aiDeck = DECKS[RIVAL.opp] ? RIVAL.opp : (S.diff==='hard' && counter) ? counter : others[Math.random()*others.length|0];
+    startMatch();
+  }
   else if (L.kind==='online'){ S.mode='lobby'; LINK.inLobby=true; }
   else if (L.build) L.build();
   render();
@@ -496,7 +793,8 @@ function goLesson(i){
 }
 function startMatch(){
   S.turn=0;
-  const me=newPlayer('You',build(DECKS.me),false), op=newPlayer(S.online?'Opponent':'Rival',build(DECKS.ai),!S.online);
+  const md = S.online ? 'blaze' : S.myDeck, ad = S.online ? 'thicket' : S.aiDeck;
+  const me=newPlayer('You',build(DECKS[md].list),false), op=newPlayer(S.online?'Opponent':'Rival',build(DECKS[ad].list),!S.online);
   S.players=[me,op];
   [me,op].forEach((p,pi)=>{
     let mull=0;
@@ -510,11 +808,12 @@ function startMatch(){
     log(`Both players drew 7 cards and set aside ${PRIZES} Prize cards. You play the ${ME===0?'Fire':'Grass'} deck. Choose your Active Pokémon, then tap Ready.`);
     return;
   }
-  const basics=op.hand.filter(isBasic).sort((a,b)=>D(a).hp-D(b).hp);
+  // Rival setup. Hard keeps Pokémon ex off the front line; Easy barely builds a Bench.
+  const basics=op.hand.filter(isBasic).sort((a,b)=>(D(a).hp-(S.diff==='hard'&&D(a).ex?200:0))-(D(b).hp-(S.diff==='hard'&&D(b).ex?200:0)));
   op.active=mkMon(take(op,basics.pop().uid));
-  for (const c of basics) if (op.bench.length<5) op.bench.push(mkMon(take(op,c.uid)));
+  for (const c of basics) if (op.bench.length<(S.diff==='easy'?1:5)) op.bench.push(mkMon(take(op,c.uid)));
   S.ready=[false,true];
-  log(`Both players drew 7 cards and set aside ${PRIZES} Prize cards. The Rival has placed their Pokémon. Choose your Active Pokémon.`);
+  log(`You play ${DECKS[md].name}. The Rival plays ${DECKS[ad].name} on ${DIFFS[S.diff].name}. Both players drew 7 cards and set aside ${PRIZES} Prize cards. Choose your Active Pokémon.`);
 }
 function checkLesson(){
   const L=LESSONS[S.li];
@@ -607,6 +906,8 @@ function toast(m){ const t=$('#toast'); t.textContent=m; t.classList.add('show')
 
 function isTarget(owner,m){
   const mode=S.ui.mode, p=P(ME);
+  if (mode==='lure') return owner!==ME && P(owner).bench.includes(m);
+  if (mode==='battery') return owner===ME && p.bench.includes(m);
   if (!mode || owner!==ME) return false;
   const onBench = p.bench.includes(m);
   if (mode==='attach') return true;
@@ -623,7 +924,7 @@ function miniMon(m,owner){
     <span class="m-bar"><i class="${rem/d.hp<=.34?'lo':''}" style="width:${rem/d.hp*100}%"></i></span>
     <span class="m-en">${m.energy.map(e=>eIcon(D(e).type)).join('')}</span>
     ${m.damage?`<span class="dmgc" title="Damage">${m.damage}</span>`:''}
-    ${m.poisoned?'<span class="psn">Poisoned</span>':''}
+    ${m.poisoned?'<span class="psn">Poisoned</span>':''}${m.paralyzed?`<span class="psn para"${m.poisoned?' style="top:42%"':''}>Paralyzed</span>`:''}
   </button>`;
 }
 function hiddenMon(){ return `<div class="cback"></div>`; }
@@ -733,18 +1034,26 @@ function modeView(){
   const msg = {
     attach:`Tap one of your Pokémon on the mat to attach ${card?D(card).name:'the Energy'}.`,
     evolve:`Tap the ${card?D(card).from:''} you want to evolve. Glowing Pokémon are legal targets.`,
-    potion:'Tap a damaged Pokémon to heal 30.',
+    potion:`Tap a damaged Pokémon to heal ${card&&card.id==='superpotion'?60:30}.`,
     switch:'Tap a Benched Pokémon to swap into the Active Spot.',
     retreat:`Tap a Benched Pokémon to become your new Active. ${p.active?topC(p.active).retreat:0} Energy will be discarded.`,
     promote:'Your Active Pokémon was Knocked Out. Tap a Benched Pokémon to move it into the Active Spot.',
-    search:'Field Guide: choose a Basic Pokémon from your deck.'
+    lure:`Tap one of your opponent's Benched Pokémon to pull it into the Active Spot.`,
+    battery:'Tap a Benched Pokémon to attach an Energy from your discard pile.',
+    search:card?`${D(card).name}: choose a card.`:'Choose a card.'
   }[u.mode];
   let opts='';
-  if (u.mode==='search'){
-    const ids=[...new Set(p.deck.filter(isBasic).map(c=>c.id))];
-    opts = `<div class="opts">${ids.map(id=>`<button class="btn ghost" data-act="do" data-a="search" data-id="${id}">${DEF[id].name} ×${p.deck.filter(c=>c.id===id).length}</button>`).join('')}</div>`;
+  if (u.mode==='search' && card){
+    const {src,ok}=searchSpec(card.id,p), ids=[...new Set(src.filter(ok).map(c=>c.id))];
+    opts = `<div class="opts">${ids.map(id=>`<button class="btn ghost" data-act="do" data-a="search" data-id="${id}">${DEF[id].name} ×${src.filter(c=>c.id===id).length}</button>`).join('')}</div>`;
   }
   return `<div class="insp-h"><b>${u.mode==='promote'?'New Active Pokémon':'Choose a target'}</b>${u.mode!=='promote'?'<button class="x" data-act="do" data-a="cancel" aria-label="Cancel">✕</button>':''}</div><div class="banner">${msg}</div>${opts}`;
+}
+function searchSpec(id,p){
+  if (id==='retriever') return {src:p.discard, ok:c=>D(c).kind==='pokemon'};
+  if (id==='energysearch') return {src:p.deck, ok:c=>D(c).kind==='energy'};
+  if (id==='rushorders') return {src:p.deck, ok:c=>D(c).stage==='Stage 1'};
+  return {src:p.deck, ok:isBasic};
 }
 function inspView(){
   const u=S.ui;
@@ -759,7 +1068,7 @@ function inspView(){
   const m=findMon(P(u.sel.owner),u.sel.uid);
   if (!m){ clearUI(); return inspView(); }
   const d=topC(m), where = P(u.sel.owner).active===m ? 'Active' : 'Bench';
-  const status = `<div class="status"><span>${u.sel.owner===ME?'Yours':oppName()} · ${where}</span><span>HP left <b>${hpLeft(m)}</b>/${d.hp}</span><span>Damage <b>${m.damage}</b></span><span>Energy ${m.energy.length?m.energy.map(e=>eIcon(D(e).type)).join(''):'<b>none</b>'}</span>${m.poisoned?'<span style="color:var(--poison);font-weight:700">Poisoned</span>':''}${m.stack.length>1?`<span>Evolved from ${D(m.stack[0]).name}</span>`:''}</div>`;
+  const status = `<div class="status"><span>${u.sel.owner===ME?'Yours':oppName()} · ${where}</span><span>HP left <b>${hpLeft(m)}</b>/${d.hp}</span><span>Damage <b>${m.damage}</b></span><span>Energy ${m.energy.length?m.energy.map(e=>eIcon(D(e).type)).join(''):'<b>none</b>'}</span>${m.poisoned?'<span style="color:var(--poison);font-weight:700">Poisoned</span>':''}${m.paralyzed?'<span style="color:var(--lightning);font-weight:700">Paralyzed</span>':''}${m.stack.length>1?`<span>Evolved from ${D(m.stack[0]).name}</span>`:''}</div>`;
   const acts = monActions(m,u.sel.owner);
   return `<div class="insp-h"><b>${d.name}</b>${close}</div>${status}${acts?`<div class="acts">${acts}</div>`:''}${fullCard(d.id)}`;
 }
@@ -801,11 +1110,11 @@ function matchPanel(){
     ? `<div class="eyebrow">Two players</div><h2>Play a friend</h2>
        <p>You ${LINK.role==='host'?'are hosting':'joined'} and play the <b>${ME===0?'Fire':'Grass'}</b> deck. First to take ${PRIZES} Prize cards wins. <span class="conn ${LINK.open?'ok':'bad'}">${LINK.open?'Connected':'Disconnected'}</span></p>`
     : `<div class="eyebrow">Final exam</div><h2>Beat the Rival</h2>
-       <div class="rival"><div class="pic"><img src="art/rival.webp" alt="The Rival, a young trainer in a green jacket" onerror="this.remove()"></div><div><b>The Rival</b><span>Grass deck with a splash of Water</span></div></div>
-       <p>Your deck is Fire with a Colorless helper. First to take ${PRIZES} Prize cards wins.</p>`;
+       <div class="rival"><div class="pic"><img src="art/rival.webp" alt="The Rival, a young trainer in a green jacket" onerror="this.remove()"></div><div><b>The Rival · ${DIFFS[S.diff].name}</b><span>Plays the ${DECKS[S.aiDeck].name} deck</span></div></div>
+       <p>You play the <b>${DECKS[S.myDeck].name}</b> deck. First to take ${PRIZES} Prize cards wins.</p>`;
   const foot = S.online
     ? `<div class="goal-btns">${LINK.lost?'<button class="btn primary" data-act="reconnect">Reconnect</button>':''}<button class="btn ghost" data-act="leave">Leave game</button></div>`
-    : `<div class="goal-btns"><button class="btn ghost" data-act="newmatch">New match</button></div>`;
+    : `<div class="goal-btns"><button class="btn ghost" data-act="newmatch">New match</button><button class="btn ghost" data-act="setup">Change deck or difficulty</button></div>`;
   return `${head}
     <div class="sect"><h3>Coach</h3><ul class="coach">${coach().map(x=>`<li>${x}</li>`).join('')||'<li>Good game.</li>'}</ul></div>
     <div class="sect"><h3>Your turn, in order</h3><ul class="check">
@@ -911,10 +1220,32 @@ function menuView(){
   <div class="modes">
     ${mode('m-learn','F',img('cindlet'),'Single player','Learn the game',`${PLAY_IDX} short lessons, from reading a card to winning a game.`,learnMeta,
       `<span class="prog" aria-label="${done} of ${PLAY_IDX} lessons done"><i style="width:${done/PLAY_IDX*100}%"></i></span>`)}
-    ${mode('m-rival','G',img('rival'),'Single player','Battle the Rival','A full match against a computer opponent, with a coach that suggests moves as you play.','Fire deck vs. Grass deck')}
+    ${mode('m-rival','G',img('rival'),'Single player','Battle the Rival','A full match against a computer opponent on Easy, Normal or Hard, with a coach that suggests moves.',`${DECKS[RIVAL.deck].name} deck · ${DIFFS[RIVAL.diff].name}`)}
     ${mode('m-friend','W',img('pyrrox')+img('stag'),'Two phones','Play a friend','Face to face on two phones. Pair by scanning a code. No accounts and no game server.',saved&&saved.role==='host'?'Game in progress, tap to resume':'Host or join')}
   </div>
-  <p class="menu-foot">Your lesson progress is saved on this device.</p>`;
+  <button class="gallery-link" data-act="m-gallery"><span class="gl-art">${img('stormwing')}${img('leviathorn')}${img('magmaw')}</span><span><b>Card gallery</b><span>Browse all ${Object.keys(DEF).length} cards in ${Object.keys(DECKS).length} decks</span></span><span class="go">→</span></button>
+  <p class="menu-foot">Your lesson progress and settings are saved on this device.</p>`;
+}
+function rivalView(){
+  const opt=(cls,act,k,on,inner)=>`<button class="${cls}${on?' on':''}" data-act="${act}" data-k="${k}" aria-pressed="${on}">${inner}</button>`;
+  return `<div class="menu-h"><button class="back" data-act="menu-home">← All modes</button><h1>Battle the Rival</h1><p>Pick your deck and how hard the Rival plays.</p></div>
+  <h3 class="sec">Your deck</h3>
+  <div class="decks">${Object.entries(DECKS).map(([k,d])=>opt(`deck t-${d.type}`,'pick-deck',k,RIVAL.deck===k,
+    `<span class="deck-art"><img src="art/${d.star}.webp" alt="" onerror="this.remove()"></span><span class="deck-body"><b>${eIcon(d.type)} ${d.name}</b><span>${d.blurb}</span></span>`)).join('')}</div>
+  <h3 class="sec">Rival difficulty</h3>
+  <div class="diffs">${Object.entries(DIFFS).map(([k,d])=>opt('diff','pick-diff',k,RIVAL.diff===k,`<b>${d.name}</b><span>${d.blurb}</span>`)).join('')}</div>
+  <h3 class="sec">Rival's deck</h3>
+  <div class="chiprow">${opt('chip','pick-opp','random',RIVAL.opp==='random','Random')}${Object.entries(DECKS).map(([k,d])=>opt('chip','pick-opp',k,RIVAL.opp===k,`${eIcon(d.type)} ${d.name}`)).join('')}</div>
+  <button class="btn primary lg start" data-act="start-rival">Start battle</button>`;
+}
+function galleryView(){
+  const F={all:['All',()=>true],F:['Fire',d=>d.type==='F'&&d.kind==='pokemon'],W:['Water',d=>d.type==='W'&&d.kind==='pokemon'],G:['Grass',d=>d.type==='G'&&d.kind==='pokemon'],
+    L:['Lightning',d=>d.type==='L'&&d.kind==='pokemon'],C:['Colorless',d=>d.type==='C'&&d.kind==='pokemon'],T:['Trainers',d=>d.kind==='item'||d.kind==='supporter'],E:['Energy',d=>d.kind==='energy']};
+  const list=Object.values(DEF).filter(F[GALLERY][1]);
+  const decksWith = id => Object.values(DECKS).filter(d=>d.list[id]).map(d=>d.name).join(', ');
+  return `<div class="menu-h"><button class="back" data-act="menu-home">← All modes</button><h1>Card gallery</h1><p>${Object.keys(DEF).length} cards. Every one is playable in at least one deck or lesson.</p></div>
+  <div class="chiprow">${Object.entries(F).map(([k,[n]])=>`<button class="chip${GALLERY===k?' on':''}" data-act="gal" data-k="${k}">${n}</button>`).join('')}</div>
+  <div class="gallery">${list.map(d=>`<figure>${fullCard(d.id)}<figcaption>${decksWith(d.id)?`In ${decksWith(d.id)}`:'Lessons only'}</figcaption></figure>`).join('')}</div>`;
 }
 function render(){
   const menu=$('#menu'), layout=$('#layout'), insp0=$('#insp');
@@ -922,7 +1253,7 @@ function render(){
   if (MENU){
     menu.hidden=false; layout.hidden=true; $('#nav').innerHTML='';
     insp0.classList.remove('open'); $('#app').classList.remove('sheet'); $('#ovl').innerHTML='';
-    menu.innerHTML=menuView(); return;
+    menu.innerHTML = MENU_VIEW==='rival' ? rivalView() : MENU_VIEW==='gallery' ? galleryView() : menuView(); return;
   }
   menu.hidden=true; layout.hidden=false;
   if (S.replaying) return;
@@ -956,7 +1287,15 @@ document.addEventListener('click', e => {
     case 'nav': return goLesson(+d.i);
     case 'menu': return goMenu();
     case 'm-learn': return goLesson(nextLesson());
-    case 'm-rival': return goLesson(PLAY_IDX);
+    case 'm-rival': MENU_VIEW='rival'; render(); return window.scrollTo(0,0);
+    case 'm-gallery': MENU_VIEW='gallery'; render(); return window.scrollTo(0,0);
+    case 'menu-home': MENU_VIEW='home'; return render();
+    case 'pick-deck': RIVAL.deck=d.k; if (RIVAL.opp===d.k) RIVAL.opp='random'; saveRival(); return render();
+    case 'pick-diff': RIVAL.diff=d.k; saveRival(); return render();
+    case 'pick-opp': RIVAL.opp=d.k; saveRival(); return render();
+    case 'start-rival': return goLesson(PLAY_IDX);
+    case 'gal': GALLERY=d.k; return render();
+    case 'setup': return goMenu('rival');
     case 'm-friend': return goLesson(FRIEND_IDX);
     case 'next': return goLesson(S.li+1);
     case 'reset': return goLesson(S.li);
@@ -997,7 +1336,9 @@ function onMon(owner,uid){
   const mode=S.ui.mode;
   if (!mode){ S.ui.sel={kind:'mon',owner,uid}; return render(); }
   const p=P(ME), m=findMon(P(owner),uid);
+  if (mode==='lure'){ if (owner===ME || !P(owner).bench.includes(m)) return toast(`Choose one of your opponent's Benched Pokémon.`); const c=S.ui.data; clearUI(); return act('trainer',{c,x:uid}); }
   if (owner!==ME) return toast('Choose one of your own Pokémon.');
+  if (mode==='battery'){ if (!p.bench.includes(m)) return toast('Choose a Benched Pokémon.'); const c=S.ui.data; clearUI(); return act('trainer',{c,x:uid}); }
   const onBench=p.bench.includes(m);
   if (mode==='promote'){ if (!onBench) return toast('Choose a Benched Pokémon.'); clearUI(); return act('promote',{m:uid}); }
   if (mode==='attach') act('attach',{c:S.ui.data,m:uid});
@@ -1029,8 +1370,8 @@ function doUI(a,d){
     case 'evolve': S.ui.mode='evolve'; S.ui.data=hc.uid; break;
     case 'play': {
       const r=whyNotTrainer(ME,hc); if (r) return toast(r);
-      if (hc.id==='potion'||hc.id==='switch'){ S.ui.mode=hc.id; S.ui.data=hc.uid; }
-      else if (hc.id==='fieldguide'){ S.ui.mode='search'; S.ui.data=hc.uid; }
+      const MODES={potion:'potion',superpotion:'potion',switch:'switch',lurewhistle:'lure',sparebattery:'battery',fieldguide:'search',retriever:'search',energysearch:'search',rushorders:'search'};
+      if (MODES[hc.id]){ S.ui.mode=MODES[hc.id]; S.ui.data=hc.uid; }
       else { clearUI(); return act('trainer',{c:hc.uid}); }
       break;
     }
