@@ -1,0 +1,25 @@
+name: Fetch card art
+on:
+  push:
+    paths: ['art/sources.json']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install pillow
+      - run: python .github/scripts/fetch_art.py
+      - name: Commit art and drop the signed source list
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898333+github-actions[bot]@users.noreply.github.com"
+          git rm -q art/sources.json
+          git add art
+          git commit -m "Add FLUX card art as WebP"
+          git push

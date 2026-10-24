@@ -86,6 +86,17 @@ h2{font-family:var(--f-display);font-weight:400;font-size:26px;line-height:1.1;m
 .log li{padding:3px 0 3px 9px;border-left:3px solid var(--line);color:var(--muted)}
 .log li.w0{border-color:var(--fire);color:var(--ink)} .log li.w1{border-color:var(--grass);color:var(--ink)}
 
+.art-wrap{position:relative;display:block;width:100%;height:100%}
+.art-wrap img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+.rival{display:flex;gap:12px;align-items:center;margin:4px 0 12px}
+.rival .pic{width:64px;height:64px;border-radius:50%;flex:none;overflow:hidden;border:3px solid var(--grass);background:color-mix(in srgb,var(--grass) 25%,var(--surface))}
+.rival .pic img{width:100%;height:100%;object-fit:cover;object-position:50% 30%;display:block}
+.rival b{display:block;font-family:var(--f-display);font-weight:400;font-size:18px}
+.rival span{font-size:13px;color:var(--muted)}
+.opp-hand{display:flex;align-items:center;gap:8px}
+.opp-hand .av{width:24px;height:24px;border-radius:50%;overflow:hidden;border:2px solid var(--grass);flex:none;background:color-mix(in srgb,var(--grass) 25%,var(--surface))}
+.opp-hand .av img{width:100%;height:100%;object-fit:cover;object-position:50% 30%;display:block}
+
 /* playmat */
 .mat{background:var(--mat);border-radius:18px;padding:12px;position:relative;max-width:640px;margin:0 auto;
   background-image:radial-gradient(circle at 50% 50%,color-mix(in srgb,var(--line) 22%,transparent) 0 54px,transparent 55px);}
@@ -303,7 +314,13 @@ function log(m, w){ S.log.unshift({m,w}); if (S.log.length>80) S.log.pop(); }
 
 /* ---------- art ---------- */
 function eIcon(t){ return `<span class="ei t-${t}" title="${TYPE[t].n}"><svg viewBox="0 0 24 24"><path d="${TYPE[t].g}"/></svg></span>`; }
+const ART = ['cindlet','pyrrox','magmaw','puffkin','budling','thornoak','ripplet','stag','potion','switch','fieldguide','research','fireE','grassE','waterE'];
 function art(id){
+  const svg = artSvg(id);
+  if (!ART.includes(id)) return svg;
+  return `<span class="art-wrap">${svg}<img src="art/${id}.webp" alt="" loading="lazy" decoding="async" onerror="this.remove()"></span>`;
+}
+function artSvg(id){
   const d = DEF[id];
   const bg = `<rect width="100" height="60" fill="var(--t-soft)"/><circle cx="84" cy="8" r="22" fill="var(--t)" opacity=".16"/>`;
   if (d.kind==='energy') return `<svg viewBox="0 0 100 60" preserveAspectRatio="xMidYMid slice" aria-hidden="true">${bg}<circle cx="50" cy="30" r="21" fill="var(--t)"/><g transform="translate(36 16) scale(1.17)"><path d="${TYPE[d.type].g}" fill="#fff"/></g></svg>`;
@@ -739,7 +756,7 @@ function boardView(){
     <div class="side">
       ${benchRow(op,1)}
       <div class="row5">${pile('Deck',op.deck.length)}${pile(`Discard`,op.discard.length,true)}${activeZone(op,1)}${prizeZone(op,1)}</div>
-      <div class="lbl" style="text-align:left">Rival's hand · ${op.hand.length} cards</div>
+      <div class="opp-hand"><span class="av"><img src="art/rival.webp" alt="" onerror="this.remove()"></span><span class="lbl">Rival's hand · ${op.hand.length} cards</span></div>
     </div>
     <div class="midline">${midline()}</div>
     <div class="side">
@@ -861,6 +878,7 @@ function lessonPanel(){
     const p=P(0), mine=!S.setup && S.cur===0;
     const ck=(on,t,s)=>`<li class="${on?'y':''}"><i></i><span>${t}${s?` <small>${s}</small>`:''}</span></li>`;
     return `<div class="eyebrow">Final exam</div><h2>Beat the Rival</h2>
+      <div class="rival"><div class="pic"><img src="art/rival.webp" alt="The Rival, a young trainer in a green jacket" onerror="this.remove()"></div><div><b>The Rival</b><span>Grass deck with a splash of Water</span></div></div>
       <p>Your deck is Fire with a Colorless helper. The Rival plays Grass with some Water. First to take ${PRIZES} Prize cards wins.</p>
       <div class="sect"><h3>Coach</h3><ul class="coach">${coach().map(x=>`<li>${x}</li>`).join('')||'<li>Good game. Start a new match to play again.</li>'}</ul></div>
       <div class="sect"><h3>Your turn, in order</h3><ul class="check">
