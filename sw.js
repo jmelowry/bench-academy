@@ -1,5 +1,5 @@
 // Bench Academy service worker: precache the app shell and card art, cache Google Fonts at runtime.
-const CACHE = 'bench-academy-v2';
+const CACHE = 'bench-academy-v3';
 const SHELL = ['./', 'index.html', 'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png'];
 const ART = ['cindlet','pyrrox','magmaw','puffkin','budling','thornoak','ripplet','stag','potion','switch','fieldguide','research','fireE','grassE','waterE','rival'].map(n => `art/${n}.webp`);
 self.addEventListener('install', e => {

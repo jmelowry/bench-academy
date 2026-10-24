@@ -161,6 +161,8 @@ h2{font-family:var(--f-display);font-weight:400;font-size:26px;line-height:1.1;m
 /* full card */
 .fc{--pad:12px;color:var(--card-ink);background:linear-gradient(var(--t-soft),var(--card) 45%);border:3px solid color-mix(in srgb,var(--t) 80%,#000);border-radius:14px;padding:var(--pad);display:grid;gap:8px;max-width:340px;margin:0 auto}
 .fc-head{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px}
+.fc-head [data-part="stage"]{flex-basis:100%}
+.fc-hp{flex:none;white-space:nowrap}
 .stage{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;background:var(--card-ink);color:var(--card);border-radius:5px;padding:1px 6px}
 .from{display:block;font-size:11px;color:color-mix(in srgb,var(--card-ink) 65%,transparent);margin-top:2px}
 .fc-name{font-family:var(--f-display);font-size:23px;line-height:1.05;flex:1;min-width:0}
