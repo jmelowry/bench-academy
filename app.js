@@ -40,7 +40,7 @@ const DECKS = {
 };
 
 /* ME is the player index this device controls: 0 offline and for the host, 1 for a guest. */
-let UID = 0, GEN = 0, S, ME = 0;
+let UID = 0, GEN = 0, S, ME = 0, MENU = true;
 let rand = Math.random;
 function mulberry32(a){ return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
 const mk = id => ({uid:++UID,id});
@@ -474,10 +474,17 @@ function saveDone(set){ try { localStorage.setItem('bench-academy-done', JSON.st
 const DONE = loadDone();
 
 function blank(li){ return {gen:++GEN,li,mode:'lesson',online:false,players:[],cur:0,turn:5,ui:{sel:null,mode:null,data:null},log:[],events:[],over:null,overHidden:false,busy:false,locked:false,setup:false,ready:[false,false],after:null,promoteWait:null,actions:[],seed:0,replaying:false,done:false,part:'hp',partsSeen:new Set(),acard:'pyrrox',hit:null}; }
+function goMenu(){
+  if (S && LESSONS[S.li].kind==='online') leaveOnline();
+  ME=0; rand=Math.random; S=blank(0); MENU=true;
+  render(); window.scrollTo(0,0);
+}
+function nextLesson(){ const i=LESSONS.findIndex((l,k)=>k<PLAY_IDX && !DONE.has(l.key)); return i<0 ? 0 : i; }
 function goLesson(i){
   i=Math.max(0,Math.min(LESSONS.length-1,i));
+  MENU=false;
   const L=LESSONS[i];
-  if (L.kind==='online' && S && S.li===i){ render(); return; }
+  if (L.kind==='online' && S && S.li===i && !MENU){ render(); return; }
   if (S && LESSONS[S.li].kind==='online' && L.kind!=='online') leaveOnline();
   ME=0; rand=Math.random;
   S=blank(i);
@@ -887,17 +894,43 @@ function overlay(){
   const won=S.over.winner===ME, lesson=S.mode==='lesson';
   let btns;
   if (lesson) btns=`<button class="btn primary" data-act="next">Play a full match</button><button class="btn ghost" data-act="reset">Replay lesson</button>`;
-  else if (S.online) btns=(LINK.role==='host'?`<button class="btn primary" data-act="rematch" ${LINK.open?'':'disabled'}>Rematch</button>`:`<span class="mid-note">The host can start a rematch.</span>`)+`<button class="btn ghost" data-act="hideov">View the board</button>`;
-  else btns=`<button class="btn primary" data-act="newmatch">Play again</button><button class="btn ghost" data-act="hideov">View the board</button>`;
+  else if (S.online) btns=(LINK.role==='host'?`<button class="btn primary" data-act="rematch" ${LINK.open?'':'disabled'}>Rematch</button>`:`<span class="mid-note">The host can start a rematch.</span>`)+`<button class="btn ghost" data-act="hideov">View the board</button><button class="btn ghost" data-act="leave">Menu</button>`;
+  else btns=`<button class="btn primary" data-act="newmatch">Play again</button><button class="btn ghost" data-act="hideov">View the board</button><button class="btn ghost" data-act="menu">Menu</button>`;
   return `<div class="ov"><div class="ov-box"><div class="eyebrow">${won?'Victory':'Defeat'}</div><h2>${won?'You win!':`${them()} wins`}</h2><p>${S.over.why}</p><div class="goal-btns">${btns}</div></div></div>`;
 }
+function menuView(){
+  const done=LESSONS.filter((l,i)=>i<PLAY_IDX && DONE.has(l.key)).length, next=nextLesson(), saved=loadSaved();
+  const learnMeta = done===PLAY_IDX ? 'All lessons complete' : done ? `Continue: ${LESSONS[next].title}` : 'Start with lesson 1';
+  const mode = (act, t, artHtml, tag, title, text, meta, extra='') => `
+    <button class="mode t-${t}" data-act="${act}">
+      <span class="mode-art${artHtml.includes('<img')&&artHtml.split('<img').length>2?' split':''}">${artHtml}<span class="tag">${tag}</span></span>
+      <span class="mode-body"><b>${title}</b><p>${text}</p>${extra}<span class="mode-meta"><span>${meta}</span><span class="go">Play →</span></span></span>
+    </button>`;
+  const img = n => `<img src="art/${n}.webp" alt="" onerror="this.remove()">`;
+  return `<div class="menu-h"><h1>Choose how to play</h1><p>New to the Pokémon Trading Card Game? Start with the lessons. Each one teaches a rule and lets you try it on a real board.</p></div>
+  <div class="modes">
+    ${mode('m-learn','F',img('cindlet'),'Single player','Learn the game',`${PLAY_IDX} short lessons, from reading a card to winning a game.`,learnMeta,
+      `<span class="prog" aria-label="${done} of ${PLAY_IDX} lessons done"><i style="width:${done/PLAY_IDX*100}%"></i></span>`)}
+    ${mode('m-rival','G',img('rival'),'Single player','Battle the Rival','A full match against a computer opponent, with a coach that suggests moves as you play.','Fire deck vs. Grass deck')}
+    ${mode('m-friend','W',img('pyrrox')+img('stag'),'Two phones','Play a friend','Face to face on two phones. Pair by scanning a code. No accounts and no game server.',saved&&saved.role==='host'?'Game in progress, tap to resume':'Host or join')}
+  </div>
+  <p class="menu-foot">Your lesson progress is saved on this device.</p>`;
+}
 function render(){
+  const menu=$('#menu'), layout=$('#layout'), insp0=$('#insp');
+  $('#menu-btn').hidden = MENU;
+  if (MENU){
+    menu.hidden=false; layout.hidden=true; $('#nav').innerHTML='';
+    insp0.classList.remove('open'); $('#app').classList.remove('sheet'); $('#ovl').innerHTML='';
+    menu.innerHTML=menuView(); return;
+  }
+  menu.hidden=true; layout.hidden=false;
   if (S.replaying) return;
   checkLesson();
   const L=LESSONS[S.li];
   const hs=$('#hand')?.scrollLeft||0;
   const num = l => l.kind==='match' ? '▶' : l.kind==='online' ? '⇄' : LESSONS.indexOf(l)+1;
-  $('#nav').innerHTML = LESSONS.map((l,i)=>`<button class="chip${i===S.li?' on':''}${DONE.has(l.key)?' done':''}" data-act="nav" data-i="${i}"><span class="n">${num(l)}</span>${l.title}</button>`).join('');
+  $('#nav').innerHTML = S.mode!=='lesson' ? '' : LESSONS.map((l,i)=>i>=PLAY_IDX?'':`<button class="chip${i===S.li?' on':''}${DONE.has(l.key)?' done':''}" data-act="nav" data-i="${i}"><span class="n">${num(l)}</span>${l.title}</button>`).join('');
   $('#lesson').innerHTML = lessonPanel();
   const insp=$('#insp');
   const lobby = L.kind==='online' && (LINK.inLobby || !S.players.length);
@@ -921,6 +954,10 @@ document.addEventListener('click', e => {
   const a=b.dataset.act, d=b.dataset;
   switch (a){
     case 'nav': return goLesson(+d.i);
+    case 'menu': return goMenu();
+    case 'm-learn': return goLesson(nextLesson());
+    case 'm-rival': return goLesson(PLAY_IDX);
+    case 'm-friend': return goLesson(FRIEND_IDX);
     case 'next': return goLesson(S.li+1);
     case 'reset': return goLesson(S.li);
     case 'newmatch': return goLesson(PLAY_IDX);
@@ -934,7 +971,7 @@ document.addEventListener('click', e => {
     case 'scanreply': return scanFor(code => useReplyCode(code));
     case 'reconnect': LINK.inLobby=true; LINK.err=''; if (LINK.role==='host') return hostGame(true); LINK.step='choose'; return render();
     case 'cancellink': Net.close(); LINK.step='choose'; LINK.err=''; if (S.online && S.players.length){ LINK.inLobby=false; LINK.lost=true; } return render();
-    case 'leave': leaveOnline(); return goLesson(0);
+    case 'leave': return goMenu();
     case 'rematch': return rematch();
     case 'copycode': {
       const t=$('#mycode'); const done=()=>toast('Code copied.');
@@ -1007,4 +1044,4 @@ function doUI(a,d){
 }
 
 $('#logo').innerHTML = `<svg viewBox="0 0 24 24"><path d="${TYPE.F.g}"/></svg>`;
-goLesson(location.hash==='#friend' ? FRIEND_IDX : 0);
+if (location.hash==='#friend') goLesson(FRIEND_IDX); else goMenu();

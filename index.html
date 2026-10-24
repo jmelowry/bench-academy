@@ -97,6 +97,35 @@ h2{font-family:var(--f-display);font-weight:400;font-size:26px;line-height:1.1;m
 .opp-hand .av{width:24px;height:24px;border-radius:50%;overflow:hidden;border:2px solid var(--grass);flex:none;background:color-mix(in srgb,var(--grass) 25%,var(--surface))}
 .opp-hand .av img{width:100%;height:100%;object-fit:cover;object-position:50% 30%;display:block}
 
+/* start menu */
+.brand{cursor:default}
+.menu-btn{flex:none;margin-left:auto}
+header nav:empty{display:none}
+#menu{max-width:1080px;margin:0 auto}
+.menu-h{margin:6px 0 16px}
+.menu-h h1{font-family:var(--f-display);font-weight:400;font-size:clamp(28px,6vw,40px);line-height:1.05;margin:0 0 6px;text-wrap:balance}
+.menu-h p{margin:0;color:var(--muted);max-width:60ch}
+.modes{display:grid;gap:14px;grid-template-columns:minmax(0,1fr)}
+@media (min-width:820px){.modes{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.mode{display:flex;flex-direction:column;text-align:left;padding:0;border:2px solid color-mix(in srgb,var(--t) 55%,var(--line));border-radius:16px;overflow:hidden;background:var(--surface);cursor:pointer;transition:transform .15s ease,box-shadow .15s ease}
+.mode:hover{transform:translateY(-2px);box-shadow:0 10px 26px color-mix(in srgb,var(--t) 22%,transparent)}
+.mode:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+.mode-art{position:relative;aspect-ratio:16/9;background:var(--t-soft);overflow:hidden}
+@media (max-width:819px){.mode-art{aspect-ratio:12/5}.mode-art img{object-position:50% 35%}}
+.mode-art img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+.mode-art.split img{width:50%}
+.mode-art.split img + img{left:50%}
+.mode-art .tag{position:absolute;left:10px;top:10px;background:#000a;color:#fff;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;border-radius:99px;padding:3px 9px}
+.mode-body{display:grid;gap:6px;padding:14px 16px 16px;flex:1}
+.mode-body b{font-family:var(--f-display);font-weight:400;font-size:24px;line-height:1.1}
+.mode-body p{margin:0;font-size:14.5px;color:var(--muted)}
+.mode-meta{margin-top:auto;padding-top:8px;display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:13.5px;font-weight:700}
+.mode-meta .go{color:var(--t)}
+.prog{height:6px;border-radius:99px;background:color-mix(in srgb,var(--line) 45%,transparent);overflow:hidden}
+.prog i{display:block;height:100%;background:var(--ok)}
+.menu-foot{margin-top:16px;font-size:13px;color:var(--muted)}
+@media (prefers-reduced-motion:reduce){.mode{transition:none}.mode:hover{transform:none}}
+
 /* two-phone lobby */
 .lobby{max-width:520px;margin:0 auto;display:grid;gap:12px}
 .lobby h2{margin-bottom:0}
@@ -264,8 +293,10 @@ h2{font-family:var(--f-display);font-weight:400;font-size:26px;line-height:1.1;m
   <header>
     <div class="brand"><span class="ei t-F" id="logo"></span><div>Bench Academy<small>Learn the Pokémon Trading Card Game by playing it</small></div></div>
     <nav id="nav" aria-label="Lessons"></nav>
+    <button class="btn ghost menu-btn" id="menu-btn" data-act="menu" hidden>Menu</button>
   </header>
-  <div class="layout">
+  <section id="menu" hidden></section>
+  <div class="layout" id="layout">
     <aside id="lesson" class="panel"></aside>
     <main id="stage"></main>
     <aside id="insp"></aside>
