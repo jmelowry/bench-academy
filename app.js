@@ -132,7 +132,7 @@ const DIFFS = {
 };
 
 /* ME is the player index this device controls: 0 offline and for the host, 1 for a guest. */
-let UID = 0, GEN = 0, S, ME = 0, MENU = true, MENU_VIEW = 'home', GALLERY = 'all';
+let UID = 0, GEN = 0, S, ME = 0, MENU = true, MENU_VIEW = 'title', GALLERY = 'all', MENU_IDX = 0;
 function loadRival(){ const d={deck:'blaze',diff:'normal',opp:'random'}; try { return Object.assign(d, JSON.parse(localStorage.getItem('ba-rival')||'{}')); } catch(e){ return d; } }
 const RIVAL = loadRival();
 function saveRival(){ try { localStorage.setItem('ba-rival', JSON.stringify(RIVAL)); } catch(e){} }
@@ -161,6 +161,37 @@ function newPlayer(name, deck, isAI){
 }
 function mkMon(card){ return {uid:card.uid,stack:[card],energy:[],damage:0,turnPlayed:S.turn,poisoned:false,abilityTurn:-1}; }
 function log(m, w){ S.log.unshift({m,w}); if (S.log.length>80) S.log.pop(); }
+
+/* ---------- chiptune sound effects (square-wave blips, started only by a tap) ---------- */
+const SFX = (() => {
+  let ctx=null, on=true;
+  try { on = localStorage.getItem('ba-sound')!=='off'; } catch(e){}
+  function tone(f, dur, type='square', vol=.05, slide=0, delay=0){
+    if (!on || (typeof S!=='undefined' && S && S.replaying)) return;
+    try {
+      ctx = ctx || new (window.AudioContext||window.webkitAudioContext)();
+      const t=ctx.currentTime+delay, o=ctx.createOscillator(), g=ctx.createGain();
+      o.type=type; o.frequency.setValueAtTime(f,t); if (slide) o.frequency.exponentialRampToValueAtTime(f*slide,t+dur);
+      g.gain.setValueAtTime(vol,t); g.gain.exponentialRampToValueAtTime(.0001,t+dur);
+      o.connect(g).connect(ctx.destination); o.start(t); o.stop(t+dur+.02);
+    } catch(e){}
+  }
+  const seq = (notes, step, dur, type, vol) => notes.forEach((f,i)=>tone(f,dur,type,vol,0,i*step));
+  return {
+    get on(){ return on; },
+    toggle(){ on=!on; try { localStorage.setItem('ba-sound', on?'on':'off'); } catch(e){} if (on) this.select(); },
+    move(){ tone(740,.045,'square',.035); },
+    select(){ seq([880,1320],.06,.07,'square',.045); },
+    back(){ tone(520,.08,'square',.04,.55); },
+    start(){ seq([523,659,784,1047,1319],.085,.13,'square',.05); },
+    card(){ tone(600,.05,'triangle',.06,1.4); },
+    hit(){ tone(220,.16,'sawtooth',.06,.35); },
+    ko(){ seq([523,392,262],.1,.14,'triangle',.08); },
+    win(){ seq([523,659,784,1047,784,1047,1319],.11,.15,'square',.05); },
+    lose(){ seq([392,370,349,330],.16,.2,'triangle',.07); },
+    nope(){ tone(150,.12,'square',.04); }
+  };
+})();
 
 /* ---------- art ---------- */
 function eIcon(t){ return `<span class="ei t-${t}" title="${TYPE[t].n}"><svg viewBox="0 0 24 24"><path d="${TYPE[t].g}"/></svg></span>`; }
@@ -198,43 +229,50 @@ function artSvg(id){
 }
 
 /* ---------- full card ---------- */
+function density(d){
+  const txt=(d.attacks||[]).reduce((n,a)=>n+(a.text||'').length+28,0)+(d.ability?d.ability.text.length+30:0)+(d.ex?95:0)+(d.from?10:0);
+  return txt>230 ? ' dense2' : txt>150 ? ' dense' : '';
+}
 function fullCard(id){
   const d = DEF[id];
   if (d.kind==='pokemon') return `
-  <div class="fc t-${d.type}">
+  <div class="fc t-${d.type}${density(d)}"><div class="fc-face">
     <div class="fc-head">
-      <span class="part" data-part="stage"><span class="stage">${d.stage}</span>${d.from?`<span class="from">Evolves from ${d.from}</span>`:''}</span>
-      <span class="part fc-name" data-part="name">${d.name}</span>
-      <span class="part fc-hp" data-part="hp"><small>HP</small>${d.hp}</span>
-      <span class="part" data-part="type">${eIcon(d.type)}</span>
+      <span class="part fc-stage" data-part="stage"><span class="stage">${d.stage}</span>${d.from?`<span class="from">Evolves from ${d.from}</span>`:''}</span>
+      <div class="fc-title"><span class="part fc-name" data-part="name">${d.name}</span><span class="part fc-hp" data-part="hp"><small>HP</small>${d.hp}</span><span class="part" data-part="type">${eIcon(d.type)}</span></div>
     </div>
     <div class="fc-art">${art(id)}</div>
-    ${d.ability?`<div class="part fc-ability" data-part="ability"><span class="ab-tag">Ability</span> <b>${d.ability.name}</b><p>${d.ability.text}</p></div>`:''}
-    ${d.attacks.map(a=>`<div class="fc-atk">
-      <span class="part cost" data-part="cost">${a.cost.map(eIcon).join('')}</span>
-      <span class="atk-main"><b>${a.name}</b>${a.text?`<span class="part atk-text" data-part="text">${a.text}</span>`:''}</span>
-      <span class="part dmg" data-part="damage">${a.dmg||''}${a.mult?'×':''}${a.plus?'+':''}</span></div>`).join('')}
-    ${d.ex?`<div class="part fc-rule" data-part="rule"><b>Pokémon ex rule:</b> When your Pokémon ex is Knocked Out, your opponent takes 2 Prize cards.</div>`:''}
+    <div class="fc-body">
+      ${d.ability?`<div class="part fc-ability" data-part="ability"><span class="ab-tag">Ability</span> <b>${d.ability.name}</b><p>${d.ability.text}</p></div>`:''}
+      ${d.attacks.map(a=>`<div class="fc-atk">
+        <span class="part cost" data-part="cost">${a.cost.map(eIcon).join('')}</span>
+        <span class="atk-main"><b>${a.name}</b>${a.text?`<span class="part atk-text" data-part="text">${a.text}</span>`:''}</span>
+        <span class="part dmg" data-part="damage">${a.dmg||''}${a.mult?'×':''}${a.plus?'+':''}</span></div>`).join('')}
+      ${d.ex?`<div class="part fc-rule" data-part="rule"><b>Pokémon ex rule:</b> When your Pokémon ex is Knocked Out, your opponent takes 2 Prize cards.</div>`:''}
+    </div>
     <div class="fc-foot">
       <span class="part" data-part="weakness"><small>Weakness</small><span class="val">${d.weak?eIcon(d.weak)+'×2':'—'}</span></span>
       <span class="part" data-part="resistance"><small>Resistance</small><span class="val">${d.resist?eIcon(d.resist)+'−30':'—'}</span></span>
       <span class="part" data-part="retreat"><small>Retreat</small><span class="val">${d.retreat?Array(d.retreat).fill(eIcon('C')).join(''):'—'}</span></span>
     </div>
-  </div>`;
+  </div></div>`;
   if (d.kind==='energy') return `
-  <div class="fc t-${d.type}">
-    <div class="fc-head"><span class="part kindpill" data-part="kind">Basic Energy</span><span class="part fc-name" data-part="name">${d.name}</span><span class="part" data-part="type">${eIcon(d.type)}</span></div>
+  <div class="fc t-${d.type}"><div class="fc-face">
+    <div class="fc-head"><span class="fc-stage"><span class="part kindpill" data-part="kind">Basic Energy</span></span>
+      <div class="fc-title"><span class="part fc-name" data-part="name">${d.name}</span><span class="part" data-part="type">${eIcon(d.type)}</span></div></div>
     <div class="fc-art">${art(id)}</div>
-    <div class="part fc-rule" data-part="rule">Attach 1 Energy card from your hand to 1 of your Pokémon once per turn. It provides 1 ${TYPE[d.type].n} Energy.</div>
-  </div>`;
+    <div class="fc-body"><div class="part fc-rule" data-part="rule">Attach 1 Energy card from your hand to 1 of your Pokémon once per turn. It provides 1 ${TYPE[d.type].n} Energy.</div></div>
+    <div class="fc-trainer-foot">Energy</div>
+  </div></div>`;
   return `
-  <div class="fc t-T">
-    <div class="fc-head"><span class="part kindpill" data-part="kind">Trainer · ${d.kind==='item'?'Item':'Supporter'}</span></div>
-    <span class="part fc-name" data-part="name">${d.name}</span>
+  <div class="fc t-T"><div class="fc-face">
+    <div class="fc-head"><span class="fc-stage"><span class="part kindpill" data-part="kind">Trainer · ${d.kind==='item'?'Item':'Supporter'}</span></span>
+      <div class="fc-title"><span class="part fc-name" data-part="name">${d.name}</span></div></div>
     <div class="fc-art">${art(id)}</div>
-    <p class="part fc-text" data-part="text">${d.text}</p>
-    <div class="part fc-rule" data-part="rule">${d.kind==='item'?'You may play any number of Item cards during your turn.':'You may play only 1 Supporter card during your turn.'}</div>
-  </div>`;
+    <div class="fc-body"><p class="part fc-text" data-part="text">${d.text}</p>
+      <div class="part fc-rule" data-part="rule">${d.kind==='item'?'You may play any number of Item cards during your turn.':'You may play only 1 Supporter card during your turn.'}</div></div>
+    <div class="fc-trainer-foot">Trainer</div>
+  </div></div>`;
 }
 
 /* ---------- rules ---------- */
@@ -417,7 +455,7 @@ function doAttack(pi,i){
   let extra = atk.fx==='flip20' && flip() ? 20 : 0;
   if (atk.fx==='flip2x20'){ const h=(flip()?1:0)+(flip()?1:0); extra = 20*h - atk.dmg; }
   const r=calcDamage(a,d,atk,extra);
-  d.damage+=r.d; S.hit=d.uid;
+  d.damage+=r.d; S.hit=d.uid; if (r.d) SFX.hit();
   log(`${topC(a).name} used ${atk.name} on ${topC(d).name} for ${r.d} damage${r.notes.length?` (${r.notes.join(', ')})`:''}.`,pi);
   if (atk.fx==='self20'){ a.damage+=20; log(`${topC(a).name} also did 20 damage to itself.`,pi); }
   if (atk.fx==='snipe30' && o.bench.length){ const t=[...o.bench].sort((x,y)=>hpLeft(x)-hpLeft(y))[0]; t.damage+=30; log(`${atk.name} also did 30 damage to ${topC(t).name} on the Bench.`,pi); }
@@ -439,11 +477,12 @@ function knockOut(pi,m){
   if (p.active===m) p.active=null; else p.bench=p.bench.filter(x=>x!==m);
   const n=Math.min(t.ex?2:1, o.prizes.length);
   for (let i=0;i<n;i++) o.hand.push(o.prizes.pop());
+  SFX.ko();
   log(`${t.name} was Knocked Out! ${who(1-pi)} took ${n} Prize card${n>1?'s':''}${t.ex?' (Pokémon ex give up 2)':''}.`);
   ev('ko');
 }
 function checkWin(){
-  const W=(pi,why)=>{ S.over={winner:pi,why}; S.busy=false; clearUI(); log(why); clearSaved(); return true; };
+  const W=(pi,why)=>{ S.over={winner:pi,why}; S.busy=false; clearUI(); log(why); clearSaved(); if (S.mode!=='lesson'||pi===ME) setTimeout(()=>pi===ME?SFX.win():SFX.lose(),400); return true; };
   for (const pi of [0,1]) if (!P(pi).prizes.length) return W(pi, pi===ME?'You took your last Prize card.':`${them()} took their last Prize card.`);
   for (const pi of [0,1]) if (!P(pi).active && !P(pi).bench.length) return W(1-pi, pi===ME?'You have no Pokémon left in play.':`${them()} has no Pokémon left in play.`);
   return false;
@@ -495,6 +534,7 @@ function maybeStart(){
 /* ---------- action log: every human move is a replayable action ---------- */
 function act(k, f={}){
   const a={k,pi:ME,...f};
+  if (k!=='attack') SFX.card();
   applyAction(a);
   if (S.online) Net.send({t:'act',a});
   render();
@@ -547,7 +587,7 @@ function aiPromote(diff='normal'){
 async function runAI(){
   const g=S.gen, p=P(1), o=P(0), diff=S.diff||'normal';
   S.busy=true; render();
-  const step = async () => { render(); await sleep(AI_DELAY.ms); return S.gen===g && !S.over; };
+  const step = async () => { render(); if (AI_DELAY.ms) SFX.card(); await sleep(AI_DELAY.ms); return S.gen===g && !S.over; };
   if (!await step()) return;
   const card = id => p.hand.find(c=>c.id===id && !whyNotTrainer(1,c));
   const play = async (id,arg) => { const c=card(id); if (!c) return true; doTrainer(1,c.uid,arg); return step(); };
@@ -765,6 +805,7 @@ const DONE = loadDone();
 
 function blank(li){ return {gen:++GEN,li,mode:'lesson',online:false,players:[],cur:0,turn:5,ui:{sel:null,mode:null,data:null},log:[],events:[],over:null,overHidden:false,busy:false,locked:false,setup:false,ready:[false,false],after:null,promoteWait:null,actions:[],seed:0,replaying:false,done:false,part:'hp',partsSeen:new Set(),acard:'pyrrox',hit:null}; }
 function goMenu(view='home'){
+  if (view==='home' && MENU) SFX.back();
   if (S && LESSONS[S.li].kind==='online') leaveOnline();
   ME=0; rand=Math.random; S=blank(0); MENU=true; MENU_VIEW=view;
   render(); window.scrollTo(0,0);
@@ -902,7 +943,7 @@ function rematch(){
 /* ---------- UI ---------- */
 function clearUI(){ S.ui={sel:null,mode:null,data:null}; }
 let toastT;
-function toast(m){ const t=$('#toast'); t.textContent=m; t.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),2800); }
+function toast(m){ if (/^(You |Only |Your |That |There |None |Neither |Choose |Wait |Pick |This |Paste |Reconnect |Retreating |Trainer |Finish )/.test(m)) SFX.nope(); const t=$('#toast'); t.textContent=m; t.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),2800); }
 
 function isTarget(owner,m){
   const mode=S.ui.mode, p=P(ME);
@@ -918,10 +959,10 @@ function isTarget(owner,m){
 function miniMon(m,owner){
   const d=topC(m), rem=hpLeft(m), sel=S.ui.sel?.kind==='mon'&&S.ui.sel.uid===m.uid;
   return `<button class="mini t-${d.type}${sel?' sel':''}${isTarget(owner,m)?' tgt':''}${S.hit===m.uid?' hit':''}" data-act="mon" data-owner="${owner}" data-uid="${m.uid}" aria-label="${d.name}, ${rem} of ${d.hp} HP">
-    <span class="m-top"><span class="m-name">${d.name.replace(' ex','')}</span>${d.ex?'<span class="ex">ex</span>':''}</span>
+    <span class="m-top${d.name.replace(' ex','').length>9?' long':''}"><span class="m-name">${d.name.replace(' ex','')}</span>${d.ex?'<span class="ex">ex</span>':''}</span>
     <span class="m-art">${art(d.id)}</span>
     <span class="m-hp"><b>${rem}</b><span>/${d.hp}</span></span>
-    <span class="m-bar"><i class="${rem/d.hp<=.34?'lo':''}" style="width:${rem/d.hp*100}%"></i></span>
+    <span class="m-bar"><i class="${rem/d.hp<=.25?'lo':rem/d.hp<=.5?'mid':''}" style="width:${rem/d.hp*100}%"></i></span>
     <span class="m-en">${m.energy.map(e=>eIcon(D(e).type)).join('')}</span>
     ${m.damage?`<span class="dmgc" title="Damage">${m.damage}</span>`:''}
     ${m.poisoned?'<span class="psn">Poisoned</span>':''}${m.paralyzed?`<span class="psn para"${m.poisoned?' style="top:42%"':''}>Paralyzed</span>`:''}
@@ -1205,30 +1246,65 @@ function overlay(){
   if (lesson) btns=`<button class="btn primary" data-act="next">Play a full match</button><button class="btn ghost" data-act="reset">Replay lesson</button>`;
   else if (S.online) btns=(LINK.role==='host'?`<button class="btn primary" data-act="rematch" ${LINK.open?'':'disabled'}>Rematch</button>`:`<span class="mid-note">The host can start a rematch.</span>`)+`<button class="btn ghost" data-act="hideov">View the board</button><button class="btn ghost" data-act="leave">Menu</button>`;
   else btns=`<button class="btn primary" data-act="newmatch">Play again</button><button class="btn ghost" data-act="hideov">View the board</button><button class="btn ghost" data-act="menu">Menu</button>`;
-  return `<div class="ov"><div class="ov-box"><div class="eyebrow">${won?'Victory':'Defeat'}</div><h2>${won?'You win!':`${them()} wins`}</h2><p>${S.over.why}</p><div class="goal-btns">${btns}</div></div></div>`;
+  return `<div class="ov"><div class="ov-box win"><div class="eyebrow">${won?'★ Victory ★':'Defeat'}</div><h2>${won?'YOU WIN!':'GAME OVER'}</h2><p>${S.over.why}</p><div class="goal-btns">${btns}</div></div></div>`;
 }
-function menuView(){
-  const done=LESSONS.filter((l,i)=>i<PLAY_IDX && DONE.has(l.key)).length, next=nextLesson(), saved=loadSaved();
-  const learnMeta = done===PLAY_IDX ? 'All lessons complete' : done ? `Continue: ${LESSONS[next].title}` : 'Start with lesson 1';
-  const mode = (act, t, artHtml, tag, title, text, meta, extra='') => `
-    <button class="mode t-${t}" data-act="${act}">
-      <span class="mode-art${artHtml.includes('<img')&&artHtml.split('<img').length>2?' split':''}">${artHtml}<span class="tag">${tag}</span></span>
-      <span class="mode-body"><b>${title}</b><p>${text}</p>${extra}<span class="mode-meta"><span>${meta}</span><span class="go">Play →</span></span></span>
-    </button>`;
-  const img = n => `<img src="art/${n}.webp" alt="" onerror="this.remove()">`;
-  return `<div class="menu-h"><h1>Choose how to play</h1><p>New to the Pokémon Trading Card Game? Start with the lessons. Each one teaches a rule and lets you try it on a real board.</p></div>
-  <div class="modes">
-    ${mode('m-learn','F',img('cindlet'),'Single player','Learn the game',`${PLAY_IDX} short lessons, from reading a card to winning a game.`,learnMeta,
-      `<span class="prog" aria-label="${done} of ${PLAY_IDX} lessons done"><i style="width:${done/PLAY_IDX*100}%"></i></span>`)}
-    ${mode('m-rival','G',img('rival'),'Single player','Battle the Rival','A full match against a computer opponent on Easy, Normal or Hard, with a coach that suggests moves.',`${DECKS[RIVAL.deck].name} deck · ${DIFFS[RIVAL.diff].name}`)}
-    ${mode('m-friend','W',img('pyrrox')+img('stag'),'Two phones','Play a friend','Face to face on two phones. Pair by scanning a code. No accounts and no game server.',saved&&saved.role==='host'?'Game in progress, tap to resume':'Host or join')}
-  </div>
-  <button class="gallery-link" data-act="m-gallery"><span class="gl-art">${img('stormwing')}${img('leviathorn')}${img('magmaw')}</span><span><b>Card gallery</b><span>Browse all ${Object.keys(DEF).length} cards in ${Object.keys(DECKS).length} decks</span></span><span class="go">→</span></button>
-  <p class="menu-foot">Your lesson progress and settings are saved on this device.</p>`;
+// Stepped pixel hills, drawn once per seed and scrolled with CSS.
+function hillsSvg(seed, color, h){
+  const r=mulberry32(seed); let y=h*.45, d='M0 '+h;
+  for (let x=0;x<=480;x+=16){ y=Math.max(h*.15,Math.min(h*.8,y+(r()-.5)*h*.22)); const yy=Math.round(y/8)*8; d+=` L${x} ${yy} L${x+16} ${yy}`; }
+  d+=` L496 ${h} Z`;
+  return `<svg viewBox="0 0 480 ${h}" preserveAspectRatio="none" aria-hidden="true"><path d="${d}" fill="${color}"/></svg>`;
+}
+function scene(){
+  const layer=(seed,color,h,spd,op)=>`<div class="hills" style="height:${h}px;--spd:${spd}s;opacity:${op}">${hillsSvg(seed,color,h)}${hillsSvg(seed,color,h)}</div>`;
+  return `<div class="scene" aria-hidden="true"><div class="stars"></div><div class="moon"></div>
+    ${layer(7,'#3a2470',240,90,1)}${layer(11,'#26185a',170,55,1)}${layer(23,'#160f3a',110,30,1)}</div>`;
+}
+const MENU_ITEMS = [
+  {act:'m-learn', label:'Learn the game', art:'cindlet', text:()=>`${PLAY_IDX} short lessons, from reading a card to winning a game. Each one lets you try the rule on a real board.`,
+    meta:()=>{ const done=LESSONS.filter((l,i)=>i<PLAY_IDX && DONE.has(l.key)).length; return {line: done===PLAY_IDX?'All lessons complete!':done?`Continue: ${LESSONS[nextLesson()].title}`:'Start with lesson 1', prog:done/PLAY_IDX}; }},
+  {act:'m-rival', label:'Battle the Rival', art:'rival', text:()=>'A full match against the computer on Easy, Normal or Hard, with a coach that suggests moves.',
+    meta:()=>({line:`${DECKS[RIVAL.deck].name} deck · ${DIFFS[RIVAL.diff].name}`})},
+  {act:'m-friend', label:'Play a friend', art:'pyrrox', text:()=>'Two phones, face to face. Pair by scanning a code. No accounts and no game server.',
+    meta:()=>{ const sv=loadSaved(); return {line: sv&&sv.role==='host'?'Game in progress: resume it!':'Host or join'}; }},
+  {act:'m-gallery', label:'Card gallery', art:'stormwing', text:()=>`Browse all ${Object.keys(DEF).length} cards across ${Object.keys(DECKS).length} decks.`, meta:()=>({line:'Filter by type'})}
+];
+function titleView(){
+  const fan=['ripplet','pyrrox','magmaw','stag','zappup'].map((id,i)=>`<div class="fan-card" style="--i:${i-2}"><img src="art/${id}.webp" alt=""></div>`).join('');
+  return `${scene()}<button class="sound" data-act="sound">${SFX.on?'♪ ON':'♪ OFF'}</button>
+  <div class="title-wrap">
+    <div class="fan">${fan}</div>
+    <h1 class="logo"><span>BENCH</span><span>ACADEMY</span></h1>
+    <div class="ribbon">Trading card school</div>
+    <button class="press" data-act="press-start">PRESS START</button>
+    <p class="legal">A fan-made way to learn the Pokémon TCG · v2.0</p>
+  </div>`;
+}
+function homeView(){
+  const it=MENU_ITEMS[MENU_IDX], m=it.meta();
+  return `${scene()}<button class="sound" data-act="sound">${SFX.on?'♪ ON':'♪ OFF'}</button>
+  <div class="title-wrap">
+    <h1 class="logo mini-logo"><span>BENCH</span><span>ACADEMY</span></h1>
+    <div class="win main-menu" role="menu">${MENU_ITEMS.map((x,i)=>`<button class="mi${i===MENU_IDX?' on':''}" role="menuitem" data-act="${x.act}" data-idx="${i}"><span class="cur">▶</span>${x.label}${x.act==='m-learn'&&DONE.size?`<span class="tag">${LESSONS.filter((l,k)=>k<PLAY_IDX&&DONE.has(l.key)).length}/${PLAY_IDX}</span>`:''}</button>`).join('')}</div>
+    <div class="win helpbox"><span class="thumb"><img src="art/${it.art}.webp" alt=""></span><div><p id="helptext" data-full="${it.text().replace(/"/g,'&quot;')}"></p><span class="meta">${m.line}</span>${m.prog!==undefined?`<span class="prog"><i style="width:${m.prog*100}%"></i></span>`:''}</div></div>
+    <p class="legal">Tap to choose · or use ↑↓ and Enter</p>
+  </div>`;
+}
+let typeT;
+function typewrite(){
+  const el=document.getElementById('helptext'); if (!el) return;
+  const full=el.dataset.full; clearInterval(typeT);
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches){ el.textContent=full; return; }
+  let n=0; el.textContent='';
+  typeT=setInterval(()=>{ n+=2; el.textContent=full.slice(0,n); if (n>=full.length) clearInterval(typeT); },16);
+}
+function setMenuIdx(i){
+  i=(i+MENU_ITEMS.length)%MENU_ITEMS.length; if (i===MENU_IDX) return;
+  MENU_IDX=i; SFX.move(); render();
 }
 function rivalView(){
   const opt=(cls,act,k,on,inner)=>`<button class="${cls}${on?' on':''}" data-act="${act}" data-k="${k}" aria-pressed="${on}">${inner}</button>`;
-  return `<div class="menu-h"><button class="back" data-act="menu-home">← All modes</button><h1>Battle the Rival</h1><p>Pick your deck and how hard the Rival plays.</p></div>
+  return `<div class="screen"><div class="screen-h"><button class="back" data-act="menu-home">◀ Main menu</button><h1>Battle the Rival</h1><p>Pick your deck and how hard the Rival plays.</p></div>
   <h3 class="sec">Your deck</h3>
   <div class="decks">${Object.entries(DECKS).map(([k,d])=>opt(`deck t-${d.type}`,'pick-deck',k,RIVAL.deck===k,
     `<span class="deck-art"><img src="art/${d.star}.webp" alt="" onerror="this.remove()"></span><span class="deck-body"><b>${eIcon(d.type)} ${d.name}</b><span>${d.blurb}</span></span>`)).join('')}</div>
@@ -1236,25 +1312,34 @@ function rivalView(){
   <div class="diffs">${Object.entries(DIFFS).map(([k,d])=>opt('diff','pick-diff',k,RIVAL.diff===k,`<b>${d.name}</b><span>${d.blurb}</span>`)).join('')}</div>
   <h3 class="sec">Rival's deck</h3>
   <div class="chiprow">${opt('chip','pick-opp','random',RIVAL.opp==='random','Random')}${Object.entries(DECKS).map(([k,d])=>opt('chip','pick-opp',k,RIVAL.opp===k,`${eIcon(d.type)} ${d.name}`)).join('')}</div>
-  <button class="btn primary lg start" data-act="start-rival">Start battle</button>`;
+  <button class="btn primary lg start" data-act="start-rival">▶ Start battle</button></div>`;
 }
 function galleryView(){
   const F={all:['All',()=>true],F:['Fire',d=>d.type==='F'&&d.kind==='pokemon'],W:['Water',d=>d.type==='W'&&d.kind==='pokemon'],G:['Grass',d=>d.type==='G'&&d.kind==='pokemon'],
     L:['Lightning',d=>d.type==='L'&&d.kind==='pokemon'],C:['Colorless',d=>d.type==='C'&&d.kind==='pokemon'],T:['Trainers',d=>d.kind==='item'||d.kind==='supporter'],E:['Energy',d=>d.kind==='energy']};
   const list=Object.values(DEF).filter(F[GALLERY][1]);
   const decksWith = id => Object.values(DECKS).filter(d=>d.list[id]).map(d=>d.name).join(', ');
-  return `<div class="menu-h"><button class="back" data-act="menu-home">← All modes</button><h1>Card gallery</h1><p>${Object.keys(DEF).length} cards. Every one is playable in at least one deck or lesson.</p></div>
+  return `<div class="screen"><div class="screen-h"><button class="back" data-act="menu-home">◀ Main menu</button><h1>Card gallery</h1><p>${Object.keys(DEF).length} cards. Every one is playable in at least one deck.</p></div>
   <div class="chiprow">${Object.entries(F).map(([k,[n]])=>`<button class="chip${GALLERY===k?' on':''}" data-act="gal" data-k="${k}">${n}</button>`).join('')}</div>
-  <div class="gallery">${list.map(d=>`<figure>${fullCard(d.id)}<figcaption>${decksWith(d.id)?`In ${decksWith(d.id)}`:'Lessons only'}</figcaption></figure>`).join('')}</div>`;
+  <div class="gallery">${list.map(d=>`<figure>${fullCard(d.id)}<figcaption>${decksWith(d.id)?`In ${decksWith(d.id)}`:'Lessons only'}</figcaption></figure>`).join('')}</div></div>`;
 }
 function render(){
   const menu=$('#menu'), layout=$('#layout'), insp0=$('#insp');
-  $('#menu-btn').hidden = MENU;
+  const full = MENU && (MENU_VIEW==='title' || MENU_VIEW==='home');
+  $('header').hidden = full;
+  $('#hud-btns').hidden = false;
+  $('#menu-btn').hidden = MENU && MENU_VIEW!=='rival' && MENU_VIEW!=='gallery';
+  $('#sound-btn').textContent = SFX.on ? '♪ On' : '♪ Off';
   if (MENU){
     menu.hidden=false; layout.hidden=true; $('#nav').innerHTML='';
     insp0.classList.remove('open'); $('#app').classList.remove('sheet'); $('#ovl').innerHTML='';
-    menu.innerHTML = MENU_VIEW==='rival' ? rivalView() : MENU_VIEW==='gallery' ? galleryView() : menuView(); return;
+    menu.classList.toggle('titled', full);
+    $('#app').classList.toggle('full', full);
+    menu.innerHTML = MENU_VIEW==='rival' ? rivalView() : MENU_VIEW==='gallery' ? galleryView() : MENU_VIEW==='title' ? titleView() : homeView();
+    if (MENU_VIEW==='home') typewrite();
+    return;
   }
+  $('#app').classList.remove('full');
   menu.hidden=true; layout.hidden=false;
   if (S.replaying) return;
   checkLesson();
@@ -1286,17 +1371,19 @@ document.addEventListener('click', e => {
   switch (a){
     case 'nav': return goLesson(+d.i);
     case 'menu': return goMenu();
-    case 'm-learn': return goLesson(nextLesson());
-    case 'm-rival': MENU_VIEW='rival'; render(); return window.scrollTo(0,0);
-    case 'm-gallery': MENU_VIEW='gallery'; render(); return window.scrollTo(0,0);
-    case 'menu-home': MENU_VIEW='home'; return render();
-    case 'pick-deck': RIVAL.deck=d.k; if (RIVAL.opp===d.k) RIVAL.opp='random'; saveRival(); return render();
-    case 'pick-diff': RIVAL.diff=d.k; saveRival(); return render();
-    case 'pick-opp': RIVAL.opp=d.k; saveRival(); return render();
-    case 'start-rival': return goLesson(PLAY_IDX);
+    case 'sound': SFX.toggle(); return render();
+    case 'press-start': SFX.start(); MENU_VIEW='home'; MENU_IDX=0; return render();
+    case 'm-learn': SFX.select(); return goLesson(nextLesson());
+    case 'm-rival': SFX.select(); MENU_VIEW='rival'; render(); return window.scrollTo(0,0);
+    case 'm-gallery': SFX.select(); MENU_VIEW='gallery'; render(); return window.scrollTo(0,0);
+    case 'menu-home': SFX.back(); MENU_VIEW='home'; return render();
+    case 'pick-deck': SFX.move(); RIVAL.deck=d.k; if (RIVAL.opp===d.k) RIVAL.opp='random'; saveRival(); return render();
+    case 'pick-diff': SFX.move(); RIVAL.diff=d.k; saveRival(); return render();
+    case 'pick-opp': SFX.move(); RIVAL.opp=d.k; saveRival(); return render();
+    case 'start-rival': SFX.start(); return goLesson(PLAY_IDX);
     case 'gal': GALLERY=d.k; return render();
     case 'setup': return goMenu('rival');
-    case 'm-friend': return goLesson(FRIEND_IDX);
+    case 'm-friend': SFX.select(); return goLesson(FRIEND_IDX);
     case 'next': return goLesson(S.li+1);
     case 'reset': return goLesson(S.li);
     case 'newmatch': return goLesson(PLAY_IDX);
@@ -1331,6 +1418,20 @@ document.addEventListener('click', e => {
   }
   if (a==='mon') return onMon(+d.owner,+d.uid);
   if (a==='do') return doUI(d.a,d);
+});
+document.addEventListener('pointerover', e => {
+  const b=e.target.closest('.mi'); if (b && MENU && MENU_VIEW==='home') setMenuIdx(+b.dataset.idx);
+});
+document.addEventListener('keydown', e => {
+  if (!MENU || e.metaKey || e.ctrlKey || e.altKey) return;
+  if (MENU_VIEW==='title' && (e.key==='Enter' || e.key===' ')){ e.preventDefault(); SFX.start(); MENU_VIEW='home'; MENU_IDX=0; return render(); }
+  if (MENU_VIEW==='home'){
+    if (e.key==='ArrowDown' || e.key==='s'){ e.preventDefault(); return setMenuIdx(MENU_IDX+1); }
+    if (e.key==='ArrowUp' || e.key==='w'){ e.preventDefault(); return setMenuIdx(MENU_IDX-1); }
+    if (e.key==='Enter' || e.key===' '){ e.preventDefault(); return document.querySelector(`.mi[data-idx="${MENU_IDX}"]`)?.click(); }
+    if (e.key==='Escape'){ SFX.back(); MENU_VIEW='title'; return render(); }
+  }
+  if ((MENU_VIEW==='rival' || MENU_VIEW==='gallery') && e.key==='Escape'){ SFX.back(); MENU_VIEW='home'; return render(); }
 });
 function onMon(owner,uid){
   const mode=S.ui.mode;
@@ -1385,4 +1486,4 @@ function doUI(a,d){
 }
 
 $('#logo').innerHTML = `<svg viewBox="0 0 24 24"><path d="${TYPE.F.g}"/></svg>`;
-if (location.hash==='#friend') goLesson(FRIEND_IDX); else goMenu();
+if (location.hash==='#friend') goLesson(FRIEND_IDX); else { goMenu('title'); }
