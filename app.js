@@ -830,7 +830,6 @@ function goLesson(i){
   else if (L.kind==='online'){ S.mode='lobby'; LINK.inLobby=true; }
   else if (L.build) L.build();
   render();
-  if (window.innerWidth<760) document.getElementById('lesson').scrollIntoView({block:'start'});
 }
 function startMatch(){
   S.turn=0;
@@ -940,10 +939,18 @@ function rematch(){
   Net.send({t:'sync', seed, actions:[]});
 }
 
-/* ---------- UI ---------- */
+/* ---------- UI: one fixed 9:16 game screen (450 x 800 logical px, taller on tall phones) ---------- */
+let MODAL=null, GAL_PAGE=0, ZOOM=null, LESSON_IDX=0;
 function clearUI(){ S.ui={sel:null,mode:null,data:null}; }
 let toastT;
 function toast(m){ if (/^(You |Only |Your |That |There |None |Neither |Choose |Wait |Pick |This |Paste |Reconnect |Retreating |Trainer |Finish )/.test(m)) SFX.nope(); const t=$('#toast'); t.textContent=m; t.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),2800); }
+function fit(){
+  const f=$('#fit'); if (!f) return;
+  const w=f.clientWidth, h=f.clientHeight, s=Math.min(w/450, h/800);
+  const fh=Math.max(800, Math.floor(h/s));
+  const r=document.documentElement.style; r.setProperty('--s', s); r.setProperty('--fh', fh+'px');
+}
+addEventListener('resize', fit); if (window.visualViewport) visualViewport.addEventListener('resize', fit);
 
 function isTarget(owner,m){
   const mode=S.ui.mode, p=P(ME);
@@ -968,69 +975,61 @@ function miniMon(m,owner){
     ${m.poisoned?'<span class="psn">Poisoned</span>':''}${m.paralyzed?`<span class="psn para"${m.poisoned?' style="top:42%"':''}>Paralyzed</span>`:''}
   </button>`;
 }
-function hiddenMon(){ return `<div class="cback"></div>`; }
+const hidden = () => `<div class="cback"></div>`;
 function benchRow(p,owner){
-  // During online setup, the opponent's choices stay face down until both are ready.
   const hide = S.online && S.setup && owner!==ME;
-  let h=''; for (let i=0;i<5;i++) h += p.bench[i] ? (hide?hiddenMon():miniMon(p.bench[i],owner)) : '<div class="slot"></div>';
-  return `<div class="zone"><div class="lbl">${owner!==ME?`${oppName()}'s Bench`:'Your Bench'} · ${p.bench.length}/5</div><div class="row5 bench">${h}</div></div>`;
+  let h=''; for (let i=0;i<5;i++) h += p.bench[i] ? (hide?hidden():miniMon(p.bench[i],owner)) : '<div class="slot"></div>';
+  return `<div class="bench-row ${owner===ME?'me':'opp'}">${h}</div>`;
 }
-function pile(label,n,discardTop){
-  const empty = n===0;
-  return `<div class="zone"><div class="lbl">${label}</div><div class="pile"><div class="cback${empty||discardTop?' ghost':''}"></div><span class="count">${n}</span></div></div>`;
-}
-function prizeZone(p,owner){
-  let h=''; for (let i=0;i<PRIZES;i++) h += `<div class="cback${i<p.prizes.length?'':' ghost'}"></div>`;
-  return `<div class="zone" style="grid-column:span 2"><div class="lbl">${owner!==ME?`${oppName()} Prizes`:'Your Prizes'} · ${p.prizes.length} left</div><div class="prizes">${h}</div></div>`;
-}
-function activeZone(p,owner){
-  const hide = S.online && S.setup && owner!==ME;
-  return `<div class="zone active-zone"><div class="lbl">Active</div>${p.active?(hide?hiddenMon():miniMon(p.active,owner)):'<div class="slot"></div>'}</div>`;
-}
-function midline(){
-  if (S.mode==='lesson') return `<span class="turnchip me">${S.setup?'Setup':'Your turn'}</span><span class="mid-note">${S.locked?'Turn over. Press Reset lesson to try again.':'Practice board. The Rival waits for you.'}</span>`;
-  const lost = S.online && LINK.lost ? `<span class="conn bad">Disconnected</span><button class="btn primary" data-act="reconnect">Reconnect</button>` : '';
-  if (S.over){
-    const again = !S.online ? `<button class="btn primary" data-act="newmatch">New match</button>` : LINK.role==='host' && !LINK.lost ? `<button class="btn primary" data-act="rematch">Rematch</button>` : '';
-    return `<span class="turnchip">Game over</span>${lost||again}`;
+function sideCol(p,owner,kind){
+  if (kind==='prizes'){
+    let h=''; for (let i=0;i<PRIZES;i++) h+=`<span class="pz${i<p.prizes.length?'':' gone'}"></span>`;
+    return `<div class="side-col"><div class="prize-grid">${h}</div><span class="cap">Prizes ${p.prizes.length}</span></div>`;
   }
+  const opp = owner!==ME;
+  return `<div class="side-col"><div class="piles"><div class="pile"><div class="cback${p.deck.length?'':' ghost'}"></div><span class="count">${p.deck.length}</span></div>
+    <div class="pile"><div class="cback ghost"></div><span class="count">${p.discard.length}</span></div></div>
+    <span class="cap">Deck · Discard${opp?` · Hand ${p.hand.length}`:''}</span></div>`;
+}
+function activeSpot(p,owner){
+  const hide = S.online && S.setup && owner!==ME;
+  return `<div class="active-spot">${p.active?(hide?hidden():miniMon(p.active,owner)):'<div class="slot"><span>Active</span></div>'}</div>`;
+}
+function turnbar(){
+  if (S.mode==='lesson') return `<span class="turnchip me">${S.setup?'Setup':'Your turn'}</span>${S.locked?'<button class="btn" data-act="reset">↺ Retry</button>':'<span class="mid-note">Practice board</span>'}`;
+  const lost = S.online && LINK.lost ? `<button class="btn" data-act="reconnect">Reconnect</button>` : '';
+  if (S.over) return `<span class="turnchip">Game over</span>${lost||`<button class="btn" data-act="modal" data-m="result">Results</button>`}`;
   if (S.setup){
-    const me=P(ME);
-    const btn = S.ready[ME] ? `<span class="mid-note">Waiting for ${S.online?'your opponent':'the Rival'}…</span>`
-      : `<button class="btn primary" data-act="do" data-a="start" ${me.active?'':'disabled'}>${S.online?'Ready':'Start battle'}</button>`;
+    const btn = S.ready[ME] ? `<span class="mid-note">Waiting…</span>` : `<button class="btn" data-act="do" data-a="start" ${P(ME).active?'':'disabled'}>${S.online?'Ready':'Start battle'}</button>`;
     return `<span class="turnchip">Setup</span>${lost||btn}`;
   }
   const mine=S.cur===ME;
-  const right = lost || (mine&&S.ui.mode!=='promote'&&!S.promoteWait ? `<button class="btn primary" data-act="do" data-a="end">End turn</button>` : `<span class="mid-note">${S.busy?'Rival is playing…':S.promoteWait&&!S.promoteWait.has(ME)?'Opponent is choosing a new Active…':''}</span>`);
-  return `<span class="turnchip ${mine?'me':'opp'}">${mine?'Your turn':`${oppName()}’s turn`} · ${S.turn}</span>${right}`;
+  const right = lost || (mine&&S.ui.mode!=='promote'&&!S.promoteWait ? `<button class="btn" data-act="do" data-a="end">End turn</button>` : `<span class="mid-note">${S.busy?'Rival is playing':S.promoteWait&&!S.promoteWait.has(ME)?'Opponent choosing':'Please wait'}</span>`);
+  return `<span class="turnchip ${mine?'me':'opp'}">${mine?'Your turn':`${oppName()}’s turn`}<small>Turn ${S.turn}</small></span>${right}`;
 }
-function boardView(){
+function fieldView(){
   const me=P(ME), op=P(1-ME), O=1-ME;
-  const av = S.online ? '' : `<span class="av"><img src="art/rival.webp" alt="" onerror="this.remove()"></span>`;
-  return `<div class="mat">
-    <div class="side">
-      ${benchRow(op,O)}
-      <div class="row5">${pile('Deck',op.deck.length)}${pile(`Discard`,op.discard.length,true)}${activeZone(op,O)}${prizeZone(op,O)}</div>
-      <div class="opp-hand">${av}<span class="lbl">${oppName()}'s hand · ${op.hand.length} cards</span></div>
-    </div>
-    <div class="midline">${midline()}</div>
-    <div class="side">
-      <div class="row5">${prizeZone(me,ME)}${activeZone(me,ME)}${pile('Deck',me.deck.length)}${pile('Discard',me.discard.length,true)}</div>
-      ${benchRow(me,ME)}
-    </div>
+  return `<div class="field">
+    ${benchRow(op,O)}
+    <div class="main-row">${sideCol(op,O,'piles')}${activeSpot(op,O)}${sideCol(op,O,'prizes')}</div>
+    <div class="turnbar">${turnbar()}</div>
+    <div class="main-row">${sideCol(me,ME,'prizes')}${activeSpot(me,ME)}${sideCol(me,ME,'piles')}</div>
+    ${benchRow(me,ME)}
   </div>`;
 }
-function handCard(c){
+function handCard(c,i,step,n){
   const d=D(c), sel=S.ui.sel?.kind==='hand'&&S.ui.sel.uid===c.uid;
   const tcls = d.kind==='pokemon'||d.kind==='energy' ? d.type : 'T';
   const kind = d.kind==='pokemon' ? d.stage : d.kind==='item' ? 'Item' : d.kind==='supporter' ? 'Supporter' : 'Energy';
-  return `<button class="hc t-${tcls}${sel?' sel':''}" data-act="hand" data-uid="${c.uid}" aria-label="${d.name}">
+  const mid=(n-1)/2, rot=n>1?(i-mid)*Math.min(3, 18/n):0, lift=Math.abs(i-mid)*Math.min(2.4,14/n);
+  return `<button class="hc t-${tcls}${sel?' sel':''}" style="left:${i*step}px;--r:${rot}deg;--y:${lift}px;z-index:${sel?50:i+1}" data-act="hand" data-uid="${c.uid}" aria-label="${d.name}">
     <span class="hc-kind">${kind}</span><span class="hc-name">${d.name}</span><span class="hc-art">${art(d.id)}</span>
     <span class="hc-foot">${d.kind==='pokemon'?`<span>HP ${d.hp}</span>${eIcon(d.type)}`:d.kind==='energy'?`<span>Energy</span>${eIcon(d.type)}`:'<span>Trainer</span>'}</span></button>`;
 }
 function handView(){
-  const p=P(ME);
-  return `<div class="handwrap"><div class="lbl">Your hand · ${p.hand.length} cards</div><div class="hand" id="hand">${p.hand.map(handCard).join('')||'<span class="empty">No cards in hand.</span>'}</div></div>`;
+  const p=P(ME), n=p.hand.length, W=430, CW=76;
+  const step = n>1 ? Math.min(CW+4, (W-CW)/(n-1)) : 0, total = n ? CW+step*(n-1) : 0;
+  return `<div class="handzone"><span class="hand-count">Hand ${n}</span><div class="hand" style="width:${total}px">${p.hand.map((c,i)=>handCard(c,i,step,n)).join('')||''}</div>${n?'':'<span class="empty">No cards in hand</span>'}</div>`;
 }
 
 function actBtn(a, label, why, extra='', num='', go=false){
@@ -1040,10 +1039,7 @@ function handActions(c){
   const d=D(c), p=P(ME);
   if (S.mode==='match' && !S.setup && S.cur!==ME) return '';
   if (d.kind==='pokemon'){
-    if (d.stage==='Basic'){
-      const label = !p.active ? 'Make Active' : 'Put on Bench';
-      return actBtn('bench', label, whyNotBench(ME,c), '', '', true);
-    }
+    if (d.stage==='Basic') return actBtn('bench', !p.active ? 'Make Active' : 'Put on Bench', whyNotBench(ME,c), '', '', true);
     let why = whyNotEvolve(ME,c);
     if (!why && !evoTargets(ME,c).length) why = `You need ${d.from} in play to evolve into ${d.name}.`;
     if (!why && !evoTargets(ME,c).some(m=>!whyNotEvolve(ME,c,m))) why = whyNotEvolve(ME,c,evoTargets(ME,c)[0]);
@@ -1069,186 +1065,205 @@ function monActions(m,owner){
   }
   return h;
 }
-function modeView(){
-  const u=S.ui, p=P(ME);
-  const card = u.data ? p.hand.find(c=>c.uid===u.data) : null;
-  const msg = {
-    attach:`Tap one of your Pokémon on the mat to attach ${card?D(card).name:'the Energy'}.`,
-    evolve:`Tap the ${card?D(card).from:''} you want to evolve. Glowing Pokémon are legal targets.`,
-    potion:`Tap a damaged Pokémon to heal ${card&&card.id==='superpotion'?60:30}.`,
-    switch:'Tap a Benched Pokémon to swap into the Active Spot.',
-    retreat:`Tap a Benched Pokémon to become your new Active. ${p.active?topC(p.active).retreat:0} Energy will be discarded.`,
-    promote:'Your Active Pokémon was Knocked Out. Tap a Benched Pokémon to move it into the Active Spot.',
-    lure:`Tap one of your opponent's Benched Pokémon to pull it into the Active Spot.`,
-    battery:'Tap a Benched Pokémon to attach an Energy from your discard pile.',
-    search:card?`${D(card).name}: choose a card.`:'Choose a card.'
-  }[u.mode];
-  let opts='';
-  if (u.mode==='search' && card){
-    const {src,ok}=searchSpec(card.id,p), ids=[...new Set(src.filter(ok).map(c=>c.id))];
-    opts = `<div class="opts">${ids.map(id=>`<button class="btn ghost" data-act="do" data-a="search" data-id="${id}">${DEF[id].name} ×${src.filter(c=>c.id===id).length}</button>`).join('')}</div>`;
-  }
-  return `<div class="insp-h"><b>${u.mode==='promote'?'New Active Pokémon':'Choose a target'}</b>${u.mode!=='promote'?'<button class="x" data-act="do" data-a="cancel" aria-label="Cancel">✕</button>':''}</div><div class="banner">${msg}</div>${opts}`;
-}
 function searchSpec(id,p){
   if (id==='retriever') return {src:p.discard, ok:c=>D(c).kind==='pokemon'};
   if (id==='energysearch') return {src:p.deck, ok:c=>D(c).kind==='energy'};
   if (id==='rushorders') return {src:p.deck, ok:c=>D(c).stage==='Stage 1'};
   return {src:p.deck, ok:isBasic};
 }
-function inspView(){
-  const u=S.ui;
-  if (u.mode) return modeView();
-  if (!u.sel) return `<div class="insp-empty"><b class="lbl">Inspector</b><p>Tap any card on the mat or in your hand to read it and see what you can do with it.</p></div>`;
-  const close = '<button class="x" data-act="close" aria-label="Close">✕</button>';
-  if (u.sel.kind==='hand'){
-    const c=P(ME).hand.find(x=>x.uid===u.sel.uid);
-    if (!c){ clearUI(); return inspView(); }
-    return `<div class="insp-h"><b>${D(c).name}</b>${close}</div><div class="acts">${handActions(c)}</div>${fullCard(c.id)}`;
-  }
-  const m=findMon(P(u.sel.owner),u.sel.uid);
-  if (!m){ clearUI(); return inspView(); }
-  const d=topC(m), where = P(u.sel.owner).active===m ? 'Active' : 'Bench';
-  const status = `<div class="status"><span>${u.sel.owner===ME?'Yours':oppName()} · ${where}</span><span>HP left <b>${hpLeft(m)}</b>/${d.hp}</span><span>Damage <b>${m.damage}</b></span><span>Energy ${m.energy.length?m.energy.map(e=>eIcon(D(e).type)).join(''):'<b>none</b>'}</span>${m.poisoned?'<span style="color:var(--poison);font-weight:700">Poisoned</span>':''}${m.paralyzed?'<span style="color:var(--lightning);font-weight:700">Paralyzed</span>':''}${m.stack.length>1?`<span>Evolved from ${D(m.stack[0]).name}</span>`:''}</div>`;
-  const acts = monActions(m,u.sel.owner);
-  return `<div class="insp-h"><b>${d.name}</b>${close}</div>${status}${acts?`<div class="acts">${acts}</div>`:''}${fullCard(d.id)}`;
+function modeMsg(){
+  const u=S.ui, p=P(ME), card = u.data ? p.hand.find(c=>c.uid===u.data) : null;
+  return {
+    attach:`Tap one of your Pokémon to attach ${card?D(card).name:'the Energy'}.`,
+    evolve:`Tap the glowing ${card?D(card).from:''} to evolve it.`,
+    potion:`Tap a damaged Pokémon to heal ${card&&card.id==='superpotion'?60:30}.`,
+    switch:'Tap a Benched Pokémon to swap it in.',
+    retreat:`Tap a Benched Pokémon to swap in. ${p.active?topC(p.active).retreat:0} Energy will be discarded.`,
+    promote:'Your Active was Knocked Out. Tap a Benched Pokémon to send it out.',
+    lure:`Tap one of your opponent's Benched Pokémon to pull it out.`,
+    battery:'Tap a Benched Pokémon to attach an Energy from your discard pile.',
+    search:'Choose a card.'
+  }[u.mode];
 }
 
 function coach(){
   const p=P(ME), o=P(1-ME), h=[];
   if (S.over) return [];
-  if (S.online && LINK.lost) return ['The phones lost their connection. Tap Reconnect and scan again. Your game is saved and picks up where you left off.'];
+  if (S.online && LINK.lost) return ['The phones lost their connection. Tap Reconnect and scan again. Your game picks up where you left off.'];
   if (S.setup){
-    if (!p.active) return ['Pick a Basic Pokémon from your hand to be your Active Pokémon. It takes the first hits, so a high-HP one is a safe choice.'];
-    if (!S.ready[ME]) return [`Bench any other Basic Pokémon you like, then tap ${S.online?'Ready':'Start battle'}. Benched Pokémon are your backup when the Active is Knocked Out.`];
-    return ['Waiting for your opponent to finish setting up. Your choices stay hidden from each other until you are both ready.'];
+    if (!p.active) return ['Tap a Basic Pokémon in your hand to make it your Active Pokémon.'];
+    if (!S.ready[ME]) return [`Bench other Basic Pokémon if you like, then tap ${S.online?'Ready':'Start battle'}.`];
+    return ['Waiting for your opponent to finish setting up.'];
   }
-  if (S.ui.mode==='promote') return ['Pick your new Active Pokémon. One with Energy already attached can hit back right away.'];
+  if (S.ui.mode==='promote') return ['Pick your new Active Pokémon. One with Energy attached can hit back right away.'];
   if (S.promoteWait && !S.promoteWait.has(ME)) return ['Your opponent is choosing a new Active Pokémon.'];
-  if (S.cur!==ME) return [`${them()} is taking their turn. Watch the log to see what they do.`];
-  if (S.turn===1) h.push(`You're going first, so you can't attack or play a Supporter this turn. Build your Bench and attach Energy.`);
-  if (p.hand.some(c=>D(c).kind==='energy') && !p.energyAttached) h.push(`You haven't attached Energy yet. You get one per turn, so don't skip it.`);
-  for (const c of p.hand.filter(c=>D(c).stage==='Stage 1')) if (inPlay(p).some(m=>!whyNotEvolve(ME,c,m))){ h.push(`${D(c).name} can evolve your ${D(c).from} right now.`); break; }
-  if (p.hand.some(isBasic) && p.bench.length<5) h.push('You have a Basic Pokémon in hand. Benching it gives you backup.');
+  if (S.cur!==ME) return [`${them()} is taking their turn.`];
+  if (S.turn===1) h.push(`You go first, so no attack or Supporter this turn. Bench Pokémon and attach Energy.`);
+  if (p.hand.some(c=>D(c).kind==='energy') && !p.energyAttached) h.push(`Attach an Energy. You get one per turn, so don't skip it.`);
+  for (const c of p.hand.filter(c=>D(c).stage==='Stage 1')) if (inPlay(p).some(m=>!whyNotEvolve(ME,c,m))){ h.push(`${D(c).name} can evolve your ${D(c).from} now.`); break; }
+  if (p.hand.some(isBasic) && p.bench.length<5) h.push('Bench the Basic Pokémon in your hand for backup.');
   if (p.bench.some(m=>topC(m).ability && m.abilityTurn!==S.turn)) h.push('Puffkin on your Bench can use Tailwind Scout to draw a card.');
   const a=p.active, oa=o.active;
   if (a && oa){
     const opts=topC(a).attacks.map((atk,i)=>({atk,ok:!whyNotAttack(ME,i),r:calcDamage(a,oa,atk)})).filter(x=>x.ok).sort((x,y)=>y.r.d-x.r.d);
-    if (opts.length){ const b=opts[0]; h.push(`${b.atk.name} does ${b.r.d} to ${topC(oa).name}${b.r.notes.length?` (${b.r.notes.join(', ')})`:''}${b.r.d>=hpLeft(oa)?`. That's a Knock Out`:''}. Attacking ends your turn, so do everything else first.`); }
-    else if (S.turn>1) h.push(`${topC(a).name} can't pay for an attack yet. Attach Energy, or retreat to a Pokémon that can.`);
-    if (topC(a).weak===topC(oa).type) h.push(`Watch out: ${topC(a).name} is weak to ${TYPE[topC(oa).type].n}, so ${topC(oa).name} hits it for double.`);
+    if (opts.length){ const b=opts[0]; h.push(`${b.atk.name} does ${b.r.d} to ${topC(oa).name}${b.r.d>=hpLeft(oa)?`, a Knock Out!`:'.'} Attacking ends your turn.`); }
+    else if (S.turn>1) h.push(`${topC(a).name} can't attack yet. Attach Energy, or retreat.`);
+    if (topC(a).weak===topC(oa).type) h.push(`Careful: ${topC(a).name} is weak to ${TYPE[topC(oa).type].n}.`);
   }
   return h.slice(0,4);
 }
-function logView(){
-  const cls = w => w===undefined ? '' : w===ME ? 'w0' : 'w1';
-  return `<div class="sect"><h3>Game log</h3><ol class="log">${S.log.map(l=>`<li class="${cls(l.w)}">${l.m}</li>`).join('')||'<li>Nothing has happened yet.</li>'}</ol></div>`;
-}
-function matchPanel(){
-  const p=P(ME), mine=!S.setup && S.cur===ME;
-  const ck=(on,t,s)=>`<li class="${on?'y':''}"><i></i><span>${t}${s?` <small>${s}</small>`:''}</span></li>`;
-  const head = S.online
-    ? `<div class="eyebrow">Two players</div><h2>Play a friend</h2>
-       <p>You ${LINK.role==='host'?'are hosting':'joined'} and play the <b>${ME===0?'Fire':'Grass'}</b> deck. First to take ${PRIZES} Prize cards wins. <span class="conn ${LINK.open?'ok':'bad'}">${LINK.open?'Connected':'Disconnected'}</span></p>`
-    : `<div class="eyebrow">Final exam</div><h2>Beat the Rival</h2>
-       <div class="rival"><div class="pic"><img src="art/rival.webp" alt="The Rival, a young trainer in a green jacket" onerror="this.remove()"></div><div><b>The Rival · ${DIFFS[S.diff].name}</b><span>Plays the ${DECKS[S.aiDeck].name} deck</span></div></div>
-       <p>You play the <b>${DECKS[S.myDeck].name}</b> deck. First to take ${PRIZES} Prize cards wins.</p>`;
-  const foot = S.online
-    ? `<div class="goal-btns">${LINK.lost?'<button class="btn primary" data-act="reconnect">Reconnect</button>':''}<button class="btn ghost" data-act="leave">Leave game</button></div>`
-    : `<div class="goal-btns"><button class="btn ghost" data-act="newmatch">New match</button><button class="btn ghost" data-act="setup">Change deck or difficulty</button></div>`;
-  return `${head}
-    <div class="sect"><h3>Coach</h3><ul class="coach">${coach().map(x=>`<li>${x}</li>`).join('')||'<li>Good game.</li>'}</ul></div>
-    <div class="sect"><h3>Your turn, in order</h3><ul class="check">
-      ${ck(mine,'Draw a card','automatic')}${ck(mine&&p.energyAttached,'Attach 1 Energy','once')}${ck(mine&&p.supporterPlayed,'Play 1 Supporter','once')}
-      ${ck(false,'Bench, evolve, play Items','any number')}${ck(mine&&p.retreated,'Retreat','optional, once')}${ck(false,'Attack','ends your turn')}</ul></div>
-    ${foot}
-    ${logView()}`;
-}
-function lobbyPanel(){
-  return `<div class="eyebrow">Two players</div><h2>Play a friend</h2>
-    <p>Play face to face on two phones. The phones connect directly to each other, so there are no accounts and no game server.</p>
-    <ol class="steps"><li>One of you taps <b>Host a game</b>.</li><li>The other taps <b>Join a game</b> and scans the host's code.</li><li>The host taps <b>Scan their reply</b> and scans the code that appears on the guest's phone.</li></ol>
-    <p class="hint">Both phones on the same Wi-Fi, or one on the other's hotspot, connects most reliably. If the connection drops, tap Reconnect and scan again. The game picks up where it left off.</p>`;
-}
-function lessonPanel(){
+
+/* ---------- game screen pieces ---------- */
+function topbar(){
   const L=LESSONS[S.li];
-  if (L.kind==='online') return S.players.length ? matchPanel() : lobbyPanel();
-  if (L.kind==='match') return matchPanel();
-  const last = S.li===PLAY_IDX-1;
-  return `<div class="eyebrow">Lesson ${S.li+1} of ${PLAY_IDX}</div><h2>${L.title}</h2>${L.body}
-    <div class="goal${S.done?' ok':''}"><div class="goal-h">${S.done?'Goal complete':'Your goal'}</div><p>${L.goal}</p>${L.hint&&!S.done?`<p class="hint">${L.hint}</p>`:''}
-    <div class="goal-btns">${L.build?'<button class="btn ghost" data-act="reset">Reset lesson</button>':''}<button class="btn ${S.done?'primary':'ghost'}" data-act="next">${last?'Play a full match':'Next lesson'}</button></div></div>
-    ${L.kind!=='anatomy'?logView():''}`;
+  let t, sub;
+  if (S.mode==='lesson'){ t=`Lesson ${S.li+1}/${PLAY_IDX}`; sub=L.title; }
+  else if (S.online || L.kind==='online'){ t='Friend match'; sub = S.players.length ? `${LINK.role==='host'?'Host':'Guest'} · ${ME===0?'Blaze':'Thicket'} · ${LINK.open?'Linked':'Offline'}` : 'Two phones'; }
+  else { const d=DIFFS[S.diff]||DIFFS.normal, a=DECKS[S.myDeck], o=DECKS[S.aiDeck];
+    t=`Vs Rival · ${d?d.name:''}`; sub=a&&o?`${a.name} vs ${o.name}`:''; }
+  const logBtn = (L.kind==='anatomy' || (L.kind==='online' && !S.players.length)) ? '' : `<button class="tb-btn" data-act="modal" data-m="log" aria-label="Game log">LOG</button>`;
+  return `<div class="topbar"><button class="tb-btn" data-act="menu" aria-label="Main menu">◀</button>
+    <div class="tb-title"><b>${t}</b><small>${sub}</small></div>${logBtn}
+    <button class="tb-btn" data-act="sound" aria-label="Sound">${SFX.on?'♪':'♪̸'}</button></div>`;
 }
-function textFallback(mine, pasteLabel){
-  return `<details class="alt"${LINK.err&&mine?' open':''}><summary>Can't scan? Use a text code</summary>
-    ${mine?`<p>Send this code to the other phone (AirDrop or Messages works):</p><textarea id="mycode" readonly>${LINK.text}</textarea><button class="btn ghost" data-act="copycode">Copy code</button>`:''}
-    ${pasteLabel?`<p>${pasteLabel}</p><textarea id="paste" placeholder="Paste the code here"></textarea><button class="btn ghost" data-act="usecode">Connect</button>`:''}
-  </details>`;
-}
-function lobbyView(){
-  const saved=loadSaved();
-  const err = LINK.err ? `<p class="err">${LINK.err}</p>` : '';
-  const cancel = `<button class="btn ghost" data-act="cancellink">Cancel</button>`;
-  let body='';
-  switch (LINK.step){
-    case 'working': body=`<h2>Getting ready…</h2><p>Preparing a connection code. This takes a few seconds.</p>`; break;
-    case 'host-show': body=`<div class="eyebrow">Step 1 of 2</div><h2>Have your friend scan this</h2>
-      <p>On their phone: open Bench Academy, go to Play a friend, and tap <b>Join a game</b>.</p>
-      <div class="qr">${LINK.qr}</div>${err}
-      <div class="big-btns"><button class="btn primary lg" data-act="scanreply">Scan their reply</button>${cancel}</div>
-      ${textFallback(true,`Then paste their reply code:`)}`; break;
-    case 'guest-show': body=`<div class="eyebrow">Step 2 of 2</div><h2>Show this to the host</h2>
-      <p>The host taps <b>Scan their reply</b> and points their camera here. The game starts as soon as they scan it.</p>
-      <div class="qr">${LINK.qr}</div>${err}<div class="big-btns">${cancel}</div>${textFallback(true,'')}`; break;
-    case 'connecting': body=`<h2>Connecting…</h2><p>Linking the two phones. Keep both screens on.</p>${err}<div class="big-btns">${cancel}</div>`; break;
-    case 'waiting': body=`<h2>Connected</h2><p>Waiting for the host to start the game…</p>`; break;
-    default: body=`<h2>Start a two-phone game</h2>${err}
-      <div class="big-btns">
-        <button class="btn primary lg" data-act="host">Host a game</button>
-        <button class="btn ghost lg" data-act="join">Join a game</button>
-        ${saved&&saved.role==='host'?`<button class="btn ghost lg" data-act="resume">Resume saved game</button>`:''}
-      </div>
-      ${saved&&saved.role==='guest'?`<p class="hint">You have a game in progress as the guest. To pick it up, ask the host to tap Resume saved game, then join.</p>`:''}
-      ${textFallback(false,`Joining with a text code from the host? Paste it here:`)}`;
+function dbox(){
+  const L=LESSONS[S.li], u=S.ui;
+  if (u.mode && u.mode!=='search') return `<div class="dbox mode"><p>${modeMsg()}</p>${u.mode!=='promote'?'<button class="btn ghost sm" data-act="do" data-a="cancel">Cancel</button>':''}</div>`;
+  if (S.mode==='lesson'){
+    const last=S.li===PLAY_IDX-1;
+    return `<div class="dbox${S.done?' ok':''}"><p><b>${S.done?'★ Goal complete!':'Goal'}</b> ${S.done?(last?'Ready for a real match?':'On to the next lesson.'):L.goal}</p>
+      <div class="dbox-btns"><button class="btn ghost sm" data-act="modal" data-m="intro" aria-label="Lesson help">?</button>${S.done?`<button class="btn sm" data-act="next">${last?'Match ▶':'Next ▶'}</button>`:''}</div></div>`;
   }
-  return `<div class="lobby panel">${body}</div>`;
+  const tips=coach();
+  return `<div class="dbox"><p>${tips[0]||'Good game!'}</p><div class="dbox-btns"><button class="btn ghost sm" data-act="modal" data-m="coach" aria-label="Coach">?</button></div></div>`;
 }
 const PARTS = [
   ['kind','Card kind','Trainer cards are Items or Supporters. Energy cards pay for attacks.'],
-  ['stage','Stage','Basic Pokémon are played straight from your hand. Stage 1 cards must evolve from the Pokémon named here.'],
+  ['stage','Stage','Basic Pokémon are played from your hand. Stage 1 cards evolve from the Pokémon named here.'],
   ['name','Name','Evolution checks this exact name.'],
   ['hp','HP','Hit Points. When damage reaches this number, the Pokémon is Knocked Out.'],
-  ['type','Type','Decides which Energy its attacks want and which Pokémon are weak to it.'],
-  ['ability','Ability','A power you can use during your turn. It does not end your turn.'],
-  ['cost','Attack cost','One symbol per Energy needed. The star is Colorless and any Energy pays for it.'],
-  ['damage','Damage','Base damage, before Weakness and Resistance are applied.'],
+  ['type','Type','Decides which Energy its attacks want and who is weak to it.'],
+  ['ability','Ability','A power you use during your turn. It does not end your turn.'],
+  ['cost','Attack cost','One symbol per Energy needed. The star is Colorless: any Energy pays for it.'],
+  ['damage','Damage','Base damage, before Weakness and Resistance.'],
   ['text','Effect text','What else the card or attack does.'],
   ['weakness','Weakness','Attacks from this type do double damage to it.'],
-  ['resistance','Resistance','Attacks from this type do 30 less damage to it.'],
+  ['resistance','Resistance','Attacks from this type do 30 less damage.'],
   ['retreat','Retreat cost','Energy you discard to move this Pokémon to the Bench.'],
-  ['rule','Rule box','Special rules for the card. Pokémon ex give up 2 Prize cards.']
+  ['rule','Rule box','Special rules. Pokémon ex give up 2 Prize cards.']
 ];
 function anatomyView(){
   const ids=['cindlet','pyrrox','puffkin','magmaw','potion','research','fireE'];
   let card=fullCard(S.acard);
   const present=new Set([...card.matchAll(/data-part="(\w+)"/g)].map(x=>x[1]));
   if (S.part) card=card.replaceAll(`data-part="${S.part}"`, `data-part="${S.part}" data-hl`);
-  return `<div class="anat panel">
-    <div class="anat-chips">${ids.map(id=>`<button class="chip${S.acard===id?' on':''}" data-act="acard" data-id="${id}">${DEF[id].name}</button>`).join('')}</div>
-    <div class="anat-grid"><div class="${S.part&&present.has(S.part)?'focus':''}">${card}</div>
-    <ul class="parts">${PARTS.map(([k,t,x])=>`<li><button data-act="part" data-p="${k}" class="${S.part===k?'on':''}${present.has(k)?'':' absent'}"><b>${t}${present.has(k)?'':' · not on this card'}</b><span>${x}</span></button></li>`).join('')}</ul></div></div>`;
+  const part=PARTS.find(p=>p[0]===S.part);
+  return `<div class="anat">
+    <div class="anat-chips">${ids.map(id=>`<button class="chip${S.acard===id?' on':''}" data-act="acard" data-id="${id}">${DEF[id].name.replace(' ex','')}</button>`).join('')}</div>
+    <div class="anat-card ${S.part&&present.has(S.part)?'focus':''}">${card}</div>
+    <div class="parts">${PARTS.map(([k,t])=>`<button data-act="part" data-p="${k}" class="${S.part===k?'on':''}${present.has(k)?'':' absent'}">${t}</button>`).join('')}</div>
+    <div class="win part-help"><b>${part?part[1]:''}</b> ${part?part[2]:''}${part&&!present.has(part[0])?' <i>Not on this card.</i>':''}</div>
+  </div>`;
 }
-function overlay(){
-  if (!S.over || S.overHidden) return '';
+function lobbyView(){
+  const saved=loadSaved(), err = LINK.err ? `<p class="err">${LINK.err}</p>` : '';
+  const cancel = `<button class="btn ghost" data-act="cancellink">Cancel</button>`;
+  const textBtn = `<button class="link" data-act="modal" data-m="textcode">Can't scan? Use a text code</button>`;
+  switch (LINK.step){
+    case 'working': return `<div class="lobby"><h2>Getting ready…</h2><p>Preparing a connection code.</p></div>`;
+    case 'host-show': return `<div class="lobby"><div class="eyebrow">Step 1 of 2</div><h2>Have your friend scan this</h2>
+      <p>On their phone: Play a friend, then <b>Join a game</b>.</p><div class="qr">${LINK.qr}</div>${err}
+      <div class="row2"><button class="btn" data-act="scanreply">Scan their reply</button>${cancel}</div>${textBtn}</div>`;
+    case 'guest-show': return `<div class="lobby"><div class="eyebrow">Step 2 of 2</div><h2>Show this to the host</h2>
+      <p>The host taps <b>Scan their reply</b>. The game starts when they scan it.</p><div class="qr">${LINK.qr}</div>${err}<div class="row2">${cancel}</div>${textBtn}</div>`;
+    case 'connecting': return `<div class="lobby"><h2>Connecting…</h2><p>Keep both screens on.</p>${err}<div class="row2">${cancel}</div></div>`;
+    case 'waiting': return `<div class="lobby"><h2>Connected!</h2><p>Waiting for the host to start the game…</p></div>`;
+    default: return `<div class="lobby">
+      <div class="lobby-art"><img src="art/pyrrox.webp" alt=""><img src="art/stag.webp" alt=""></div>
+      <h2>Play a friend</h2><p>Two phones, face to face. The phones connect directly, so there are no accounts and no game server.</p>${err}
+      <div class="stack">
+        <button class="btn lg" data-act="host">Host a game</button>
+        <button class="btn ghost lg" data-act="join">Join a game</button>
+        ${saved&&saved.role==='host'?`<button class="btn ghost lg" data-act="resume">Resume saved game</button>`:''}
+      </div>
+      <p class="hint">Same Wi-Fi, or one phone on the other's hotspot, works best. If the link drops, tap Reconnect and scan again.</p>${textBtn}</div>`;
+  }
+}
+function gameScreen(){
+  const L=LESSONS[S.li];
+  const lobby = L.kind==='online' && (LINK.inLobby || !S.players.length);
+  let body;
+  if (lobby) body = lobbyView();
+  else if (L.kind==='anatomy') body = `${dbox()}${anatomyView()}`;
+  else body = `${dbox()}${fieldView()}${handView()}`;
+  return `<div class="game">${topbar()}${body}</div>`;
+}
+
+/* ---------- modals ---------- */
+function modalView(){
+  const u=S && S.ui;
+  if (MENU && ZOOM) return sheet(`<div class="zoom-card">${fullCard(ZOOM)}</div><button class="btn ghost lg" data-act="close">Close</button>`, '', 'zoom');
+  if (MENU || !S) return '';
+  if (S.over && !S.overHidden && MODAL!=='log') return resultModal();
+  if (u.mode==='search'){
+    const p=P(ME), card=p.hand.find(c=>c.uid===u.data);
+    if (card){
+      const {src,ok}=searchSpec(card.id,p), ids=[...new Set(src.filter(ok).map(c=>c.id))];
+      return sheet(`<p class="muted">${D(card).name}: choose a card.</p><div class="opts">${ids.map(id=>`<button class="opt" data-act="do" data-a="search" data-id="${id}"><span class="opt-art t-${DEF[id].type||'T'}">${art(id)}</span><b>${DEF[id].name}</b><small>×${src.filter(c=>c.id===id).length}</small></button>`).join('')}</div>`, D(card).name, 'search', 'cancel');
+    }
+  }
+  if (u.sel && !u.mode){
+    if (u.sel.kind==='hand'){
+      const c=P(ME).hand.find(x=>x.uid===u.sel.uid);
+      if (c) return sheet(`<div class="acts">${handActions(c)}</div><div class="zoom-card">${fullCard(c.id)}</div>`, D(c).name, 'card');
+    } else {
+      const m=findMon(P(u.sel.owner),u.sel.uid);
+      if (m){
+        const d=topC(m), where = P(u.sel.owner).active===m ? 'Active' : 'Bench', acts=monActions(m,u.sel.owner);
+        const status = `<div class="status"><span>${u.sel.owner===ME?'Yours':oppName()} · ${where}</span><span>HP <b>${hpLeft(m)}</b>/${d.hp}</span><span>Energy ${m.energy.length?m.energy.map(e=>eIcon(D(e).type)).join(''):'<b>none</b>'}</span>${m.poisoned?'<span class="st-p">Poisoned</span>':''}${m.paralyzed?'<span class="st-z">Paralyzed</span>':''}</div>`;
+        return sheet(`${status}${acts?`<div class="acts">${acts}</div>`:''}<div class="zoom-card">${fullCard(d.id)}</div>`, d.name, 'card');
+      }
+    }
+  }
+  if (MODAL==='intro'){
+    const L=LESSONS[S.li];
+    return sheet(`<div class="intro">${L.body}<div class="goal-line"><b>Your goal</b> ${L.goal}</div>${L.hint?`<p class="muted">Tip: ${L.hint}</p>`:''}</div>
+      <div class="row2"><button class="btn lg" data-act="close">Let's go!</button>${L.build?'<button class="btn ghost lg" data-act="reset">Restart</button>':''}</div>`, `Lesson ${S.li+1}: ${L.title}`, 'intro');
+  }
+  if (MODAL==='coach'){
+    const p=P(ME), mine=!S.setup && S.cur===ME;
+    const ck=(on,t,s)=>`<li class="${on?'y':''}"><i></i><span>${t}${s?` <small>${s}</small>`:''}</span></li>`;
+    const btns = S.online ? `<button class="btn ghost" data-act="leave">Leave game</button>` : `<button class="btn ghost" data-act="newmatch">New match</button><button class="btn ghost" data-act="setup">Change setup</button>`;
+    return sheet(`<ul class="coach">${coach().map(x=>`<li>${x}</li>`).join('')||'<li>Good game!</li>'}</ul>
+      <h3 class="sec">Your turn, in order</h3><ul class="check">${ck(mine,'Draw a card','automatic')}${ck(mine&&p.energyAttached,'Attach 1 Energy','once')}${ck(mine&&p.supporterPlayed,'Play 1 Supporter','once')}${ck(false,'Bench, evolve, play Items','any number')}${ck(mine&&p.retreated,'Retreat','optional, once')}${ck(false,'Attack','ends your turn')}</ul>
+      <div class="row2">${btns}</div>`, 'Coach', 'coach');
+  }
+  if (MODAL==='log'){
+    const cls = w => w===undefined ? '' : w===ME ? 'w0' : 'w1';
+    return sheet(`<ol class="log">${S.log.slice(0,40).map(l=>`<li class="${cls(l.w)}">${l.m}</li>`).join('')||'<li>Nothing has happened yet.</li>'}</ol>`, 'Game log', 'log');
+  }
+  if (MODAL==='textcode'){
+    const mine = LINK.step==='host-show' || LINK.step==='guest-show';
+    const paste = LINK.step==='host-show' ? 'Paste their reply code:' : LINK.step==='guest-show' ? '' : 'Paste the host code:';
+    return sheet(`${mine?`<p>Send this code to the other phone (AirDrop or Messages works):</p><textarea id="mycode" readonly>${LINK.text}</textarea><button class="btn ghost" data-act="copycode">Copy code</button>`:''}
+      ${paste?`<p>${paste}</p><textarea id="paste" placeholder="Paste the code here"></textarea><button class="btn" data-act="usecode">Connect</button>`:''}`, 'Text code', 'textcode');
+  }
+  return '';
+}
+function sheet(inner, title, cls, closeAct='close'){
+  return `<div class="modal-back" data-act="${closeAct==='cancel'?'do':'close'}" ${closeAct==='cancel'?'data-a="cancel"':''}></div>
+    <div class="sheet win ${cls}" role="dialog" aria-label="${title||'Card'}">${title?`<div class="sheet-h"><b>${title}</b><button class="x" data-act="${closeAct==='cancel'?'do':'close'}" ${closeAct==='cancel'?'data-a="cancel"':''} aria-label="Close">✕</button></div>`:''}${inner}</div>`;
+}
+function resultModal(){
   const won=S.over.winner===ME, lesson=S.mode==='lesson';
   let btns;
-  if (lesson) btns=`<button class="btn primary" data-act="next">Play a full match</button><button class="btn ghost" data-act="reset">Replay lesson</button>`;
-  else if (S.online) btns=(LINK.role==='host'?`<button class="btn primary" data-act="rematch" ${LINK.open?'':'disabled'}>Rematch</button>`:`<span class="mid-note">The host can start a rematch.</span>`)+`<button class="btn ghost" data-act="hideov">View the board</button><button class="btn ghost" data-act="leave">Menu</button>`;
-  else btns=`<button class="btn primary" data-act="newmatch">Play again</button><button class="btn ghost" data-act="hideov">View the board</button><button class="btn ghost" data-act="menu">Menu</button>`;
-  return `<div class="ov"><div class="ov-box win"><div class="eyebrow">${won?'★ Victory ★':'Defeat'}</div><h2>${won?'YOU WIN!':'GAME OVER'}</h2><p>${S.over.why}</p><div class="goal-btns">${btns}</div></div></div>`;
+  if (lesson) btns=`<button class="btn lg" data-act="next">Play a full match ▶</button><button class="btn ghost" data-act="reset">Replay lesson</button>`;
+  else if (S.online) btns=(LINK.role==='host'?`<button class="btn lg" data-act="rematch" ${LINK.open?'':'disabled'}>Rematch</button>`:`<p class="muted">The host can start a rematch.</p>`)+`<div class="row2"><button class="btn ghost" data-act="hideov">View board</button><button class="btn ghost" data-act="leave">Menu</button></div>`;
+  else btns=`<button class="btn lg" data-act="newmatch">Play again</button><div class="row2"><button class="btn ghost" data-act="hideov">View board</button><button class="btn ghost" data-act="menu">Menu</button></div>`;
+  return `<div class="modal-back"></div><div class="sheet win result"><div class="eyebrow">${won?'★ Victory ★':'Defeat'}</div><h2 class="big">${won?'YOU WIN!':'GAME OVER'}</h2><p>${S.over.why}</p>${btns}</div>`;
 }
-// Stepped pixel hills, drawn once per seed and scrolled with CSS.
+
+/* ---------- menu screens ---------- */
 function hillsSvg(seed, color, h){
   const r=mulberry32(seed); let y=h*.45, d='M0 '+h;
   for (let x=0;x<=480;x+=16){ y=Math.max(h*.15,Math.min(h*.8,y+(r()-.5)*h*.22)); const yy=Math.round(y/8)*8; d+=` L${x} ${yy} L${x+16} ${yy}`; }
@@ -1256,39 +1271,73 @@ function hillsSvg(seed, color, h){
   return `<svg viewBox="0 0 480 ${h}" preserveAspectRatio="none" aria-hidden="true"><path d="${d}" fill="${color}"/></svg>`;
 }
 function scene(){
-  const layer=(seed,color,h,spd,op)=>`<div class="hills" style="height:${h}px;--spd:${spd}s;opacity:${op}">${hillsSvg(seed,color,h)}${hillsSvg(seed,color,h)}</div>`;
-  return `<div class="scene" aria-hidden="true"><div class="stars"></div><div class="moon"></div>
-    ${layer(7,'#3a2470',240,90,1)}${layer(11,'#26185a',170,55,1)}${layer(23,'#160f3a',110,30,1)}</div>`;
+  const layer=(seed,color,h,spd)=>`<div class="hills" style="height:${h}px;--spd:${spd}s">${hillsSvg(seed,color,h)}${hillsSvg(seed,color,h)}</div>`;
+  return `<div class="scene" aria-hidden="true"><div class="stars"></div><div class="moon"></div>${layer(7,'#3a2470',230,90)}${layer(11,'#26185a',160,55)}${layer(23,'#160f3a',100,30)}</div>`;
 }
+const soundBtn = () => `<button class="sound" data-act="sound">${SFX.on?'♪ ON':'♪ OFF'}</button>`;
+const lessonsDone = () => LESSONS.filter((l,k)=>k<PLAY_IDX&&DONE.has(l.key)).length;
 const MENU_ITEMS = [
   {act:'m-learn', label:'Learn the game', art:'cindlet', text:()=>`${PLAY_IDX} short lessons, from reading a card to winning a game. Each one lets you try the rule on a real board.`,
-    meta:()=>{ const done=LESSONS.filter((l,i)=>i<PLAY_IDX && DONE.has(l.key)).length; return {line: done===PLAY_IDX?'All lessons complete!':done?`Continue: ${LESSONS[nextLesson()].title}`:'Start with lesson 1', prog:done/PLAY_IDX}; }},
+    meta:()=>{ const done=lessonsDone(); return {line: done===PLAY_IDX?'All lessons complete!':done?`Next: ${LESSONS[nextLesson()].title}`:'Start with lesson 1', prog:done/PLAY_IDX}; }},
   {act:'m-rival', label:'Battle the Rival', art:'rival', text:()=>'A full match against the computer on Easy, Normal or Hard, with a coach that suggests moves.',
     meta:()=>({line:`${DECKS[RIVAL.deck].name} deck · ${DIFFS[RIVAL.diff].name}`})},
   {act:'m-friend', label:'Play a friend', art:'pyrrox', text:()=>'Two phones, face to face. Pair by scanning a code. No accounts and no game server.',
     meta:()=>{ const sv=loadSaved(); return {line: sv&&sv.role==='host'?'Game in progress: resume it!':'Host or join'}; }},
-  {act:'m-gallery', label:'Card gallery', art:'stormwing', text:()=>`Browse all ${Object.keys(DEF).length} cards across ${Object.keys(DECKS).length} decks.`, meta:()=>({line:'Filter by type'})}
+  {act:'m-gallery', label:'Card gallery', art:'stormwing', text:()=>`Browse all ${Object.keys(DEF).length} cards across ${Object.keys(DECKS).length} decks.`, meta:()=>({line:'Tap a card to zoom'})}
 ];
 function titleView(){
   const fan=['ripplet','pyrrox','magmaw','stag','zappup'].map((id,i)=>`<div class="fan-card" style="--i:${i-2}"><img src="art/${id}.webp" alt=""></div>`).join('');
-  return `${scene()}<button class="sound" data-act="sound">${SFX.on?'♪ ON':'♪ OFF'}</button>
-  <div class="title-wrap">
-    <div class="fan">${fan}</div>
-    <h1 class="logo"><span>BENCH</span><span>ACADEMY</span></h1>
-    <div class="ribbon">Trading card school</div>
-    <button class="press" data-act="press-start">PRESS START</button>
-    <p class="legal">A fan-made way to learn the Pokémon TCG · v2.0</p>
-  </div>`;
+  return `<div class="menu-screen" data-act="press-start">${scene()}${soundBtn()}
+    <div class="title-wrap"><div class="fan">${fan}</div>
+      <h1 class="logo"><span>BENCH</span><span>ACADEMY</span></h1><div class="ribbon">Trading card school</div>
+      <button class="press" data-act="press-start">PRESS START</button>
+      <p class="legal">A fan-made way to learn the Pokémon TCG · v2.1</p></div></div>`;
 }
 function homeView(){
   const it=MENU_ITEMS[MENU_IDX], m=it.meta();
-  return `${scene()}<button class="sound" data-act="sound">${SFX.on?'♪ ON':'♪ OFF'}</button>
-  <div class="title-wrap">
-    <h1 class="logo mini-logo"><span>BENCH</span><span>ACADEMY</span></h1>
-    <div class="win main-menu" role="menu">${MENU_ITEMS.map((x,i)=>`<button class="mi${i===MENU_IDX?' on':''}" role="menuitem" data-act="${x.act}" data-idx="${i}"><span class="cur">▶</span>${x.label}${x.act==='m-learn'&&DONE.size?`<span class="tag">${LESSONS.filter((l,k)=>k<PLAY_IDX&&DONE.has(l.key)).length}/${PLAY_IDX}</span>`:''}</button>`).join('')}</div>
-    <div class="win helpbox"><span class="thumb"><img src="art/${it.art}.webp" alt=""></span><div><p id="helptext" data-full="${it.text().replace(/"/g,'&quot;')}"></p><span class="meta">${m.line}</span>${m.prog!==undefined?`<span class="prog"><i style="width:${m.prog*100}%"></i></span>`:''}</div></div>
-    <p class="legal">Tap to choose · or use ↑↓ and Enter</p>
-  </div>`;
+  return `<div class="menu-screen">${scene()}${soundBtn()}
+    <div class="title-wrap home"><h1 class="logo mini-logo"><span>BENCH</span><span>ACADEMY</span></h1>
+      <div class="win main-menu" role="menu">${MENU_ITEMS.map((x,i)=>`<button class="mi${i===MENU_IDX?' on':''}" role="menuitem" data-act="${x.act}" data-idx="${i}"><span class="cur">▶</span>${x.label}${x.act==='m-learn'&&DONE.size?`<span class="tag">${lessonsDone()}/${PLAY_IDX}</span>`:''}</button>`).join('')}</div>
+      <div class="win helpbox"><span class="thumb"><img src="art/${it.art}.webp" alt=""></span><div><p id="helptext" data-full="${it.text().replace(/"/g,'&quot;')}"></p><span class="meta">${m.line}</span>${m.prog!==undefined?`<span class="prog"><i style="width:${m.prog*100}%"></i></span>`:''}</div></div>
+      <p class="legal">Tap to choose · or use ↑↓ and Enter</p></div></div>`;
+}
+function screenHead(title, sub){
+  return `<div class="screen-h"><button class="tb-btn" data-act="menu-home" aria-label="Back">◀</button><div><h1>${title}</h1>${sub?`<p>${sub}</p>`:''}</div></div>`;
+}
+function lessonsView(){
+  return `<div class="screen">${screenHead('Learn the game', `${lessonsDone()} of ${PLAY_IDX} complete`)}
+    <div class="win level-list">${LESSONS.slice(0,PLAY_IDX).map((l,i)=>`<button class="lvl${i===LESSON_IDX?' on':''}${DONE.has(l.key)?' done':''}" data-act="pick-lesson" data-i="${i}"><span class="cur">▶</span><span class="lvl-n">${i+1}</span><span class="lvl-t">${l.title}</span><span class="lvl-s">${DONE.has(l.key)?'★':'☆'}</span></button>`).join('')}</div>
+    <button class="btn lg" data-act="pick-lesson" data-i="${LESSON_IDX}">▶ Start lesson ${LESSON_IDX+1}</button></div>`;
+}
+function rivalView(){
+  const keys=Object.keys(DECKS), d=DECKS[RIVAL.deck], oppKey=RIVAL.opp, oppD=DECKS[oppKey];
+  return `<div class="screen">${screenHead('Battle the Rival','Pick your deck and how hard the Rival plays.')}
+    <h3 class="sec">Your deck</h3>
+    <div class="carousel win t-${d.type}">
+      <button class="arrow" data-act="deck-step" data-k="-1" aria-label="Previous deck">◀</button>
+      <div class="car-card"><div class="car-art"><img src="art/${d.star}.webp" alt=""></div>
+        <div class="car-body"><b>${eIcon(d.type)} ${d.name}</b><span>${d.blurb}</span><span class="dots">${keys.map(k=>`<i class="${k===RIVAL.deck?'on':''}"></i>`).join('')}</span></div></div>
+      <button class="arrow" data-act="deck-step" data-k="1" aria-label="Next deck">▶</button>
+    </div>
+    <h3 class="sec">Rival difficulty</h3>
+    <div class="seg">${Object.entries(DIFFS).map(([k,x])=>`<button class="${RIVAL.diff===k?'on':''}" data-act="pick-diff" data-k="${k}">${x.name}</button>`).join('')}</div>
+    <p class="seg-help">${DIFFS[RIVAL.diff].blurb}</p>
+    <h3 class="sec">Rival's deck</h3>
+    <div class="cycler win"><button class="arrow" data-act="opp-step" data-k="-1" aria-label="Previous">◀</button>
+      <b>${oppD?`${eIcon(oppD.type)} ${oppD.name}`:'Random'}</b><button class="arrow" data-act="opp-step" data-k="1" aria-label="Next">▶</button></div>
+    <button class="btn lg go-btn" data-act="start-rival">▶ Start battle</button></div>`;
+}
+const GAL_F={all:['All',()=>true],F:['Fire',d=>d.type==='F'&&d.kind==='pokemon'],W:['Water',d=>d.type==='W'&&d.kind==='pokemon'],G:['Grass',d=>d.type==='G'&&d.kind==='pokemon'],
+  L:['Lightning',d=>d.type==='L'&&d.kind==='pokemon'],C:['Colorless',d=>d.type==='C'&&d.kind==='pokemon'],T:['Trainers',d=>d.kind==='item'||d.kind==='supporter'],E:['Energy',d=>d.kind==='energy']};
+const GAL_PER=6;
+function galleryView(){
+  const list=Object.values(DEF).filter(GAL_F[GALLERY][1]), pages=Math.max(1,Math.ceil(list.length/GAL_PER));
+  GAL_PAGE=Math.min(GAL_PAGE,pages-1);
+  const pageCards=list.slice(GAL_PAGE*GAL_PER,(GAL_PAGE+1)*GAL_PER);
+  return `<div class="screen">${screenHead('Card gallery',`${Object.keys(DEF).length} cards · tap one to zoom`)}
+    <div class="gal-filters">${Object.entries(GAL_F).map(([k,[n]])=>`<button class="chip${GALLERY===k?' on':''}" data-act="gal" data-k="${k}">${n}</button>`).join('')}</div>
+    <div class="binder">${pageCards.map(d=>`<button class="bslot" data-act="zoom" data-id="${d.id}" aria-label="${d.name}">${fullCard(d.id)}</button>`).join('')}</div>
+    <div class="pager"><button class="arrow" data-act="gal-page" data-k="-1" ${GAL_PAGE?'':'disabled'} aria-label="Previous page">◀</button><span>Page ${GAL_PAGE+1} / ${pages}</span><button class="arrow" data-act="gal-page" data-k="1" ${GAL_PAGE<pages-1?'':'disabled'} aria-label="Next page">▶</button></div></div>`;
 }
 let typeT;
 function typewrite(){
@@ -1298,69 +1347,21 @@ function typewrite(){
   let n=0; el.textContent='';
   typeT=setInterval(()=>{ n+=2; el.textContent=full.slice(0,n); if (n>=full.length) clearInterval(typeT); },16);
 }
-function setMenuIdx(i){
-  i=(i+MENU_ITEMS.length)%MENU_ITEMS.length; if (i===MENU_IDX) return;
-  MENU_IDX=i; SFX.move(); render();
-}
-function rivalView(){
-  const opt=(cls,act,k,on,inner)=>`<button class="${cls}${on?' on':''}" data-act="${act}" data-k="${k}" aria-pressed="${on}">${inner}</button>`;
-  return `<div class="screen"><div class="screen-h"><button class="back" data-act="menu-home">◀ Main menu</button><h1>Battle the Rival</h1><p>Pick your deck and how hard the Rival plays.</p></div>
-  <h3 class="sec">Your deck</h3>
-  <div class="decks">${Object.entries(DECKS).map(([k,d])=>opt(`deck t-${d.type}`,'pick-deck',k,RIVAL.deck===k,
-    `<span class="deck-art"><img src="art/${d.star}.webp" alt="" onerror="this.remove()"></span><span class="deck-body"><b>${eIcon(d.type)} ${d.name}</b><span>${d.blurb}</span></span>`)).join('')}</div>
-  <h3 class="sec">Rival difficulty</h3>
-  <div class="diffs">${Object.entries(DIFFS).map(([k,d])=>opt('diff','pick-diff',k,RIVAL.diff===k,`<b>${d.name}</b><span>${d.blurb}</span>`)).join('')}</div>
-  <h3 class="sec">Rival's deck</h3>
-  <div class="chiprow">${opt('chip','pick-opp','random',RIVAL.opp==='random','Random')}${Object.entries(DECKS).map(([k,d])=>opt('chip','pick-opp',k,RIVAL.opp===k,`${eIcon(d.type)} ${d.name}`)).join('')}</div>
-  <button class="btn primary lg start" data-act="start-rival">▶ Start battle</button></div>`;
-}
-function galleryView(){
-  const F={all:['All',()=>true],F:['Fire',d=>d.type==='F'&&d.kind==='pokemon'],W:['Water',d=>d.type==='W'&&d.kind==='pokemon'],G:['Grass',d=>d.type==='G'&&d.kind==='pokemon'],
-    L:['Lightning',d=>d.type==='L'&&d.kind==='pokemon'],C:['Colorless',d=>d.type==='C'&&d.kind==='pokemon'],T:['Trainers',d=>d.kind==='item'||d.kind==='supporter'],E:['Energy',d=>d.kind==='energy']};
-  const list=Object.values(DEF).filter(F[GALLERY][1]);
-  const decksWith = id => Object.values(DECKS).filter(d=>d.list[id]).map(d=>d.name).join(', ');
-  return `<div class="screen"><div class="screen-h"><button class="back" data-act="menu-home">◀ Main menu</button><h1>Card gallery</h1><p>${Object.keys(DEF).length} cards. Every one is playable in at least one deck.</p></div>
-  <div class="chiprow">${Object.entries(F).map(([k,[n]])=>`<button class="chip${GALLERY===k?' on':''}" data-act="gal" data-k="${k}">${n}</button>`).join('')}</div>
-  <div class="gallery">${list.map(d=>`<figure>${fullCard(d.id)}<figcaption>${decksWith(d.id)?`In ${decksWith(d.id)}`:'Lessons only'}</figcaption></figure>`).join('')}</div></div>`;
-}
+function setMenuIdx(i){ i=(i+MENU_ITEMS.length)%MENU_ITEMS.length; if (i===MENU_IDX) return; MENU_IDX=i; SFX.move(); render(); }
+
 function render(){
-  const menu=$('#menu'), layout=$('#layout'), insp0=$('#insp');
-  const full = MENU && (MENU_VIEW==='title' || MENU_VIEW==='home');
-  $('header').hidden = full;
-  $('#hud-btns').hidden = false;
-  $('#menu-btn').hidden = MENU && MENU_VIEW!=='rival' && MENU_VIEW!=='gallery';
-  $('#sound-btn').textContent = SFX.on ? '♪ On' : '♪ Off';
+  fit();
+  if (S && S.replaying) return;
+  const screen=$('#screen');
   if (MENU){
-    menu.hidden=false; layout.hidden=true; $('#nav').innerHTML='';
-    insp0.classList.remove('open'); $('#app').classList.remove('sheet'); $('#ovl').innerHTML='';
-    menu.classList.toggle('titled', full);
-    $('#app').classList.toggle('full', full);
-    menu.innerHTML = MENU_VIEW==='rival' ? rivalView() : MENU_VIEW==='gallery' ? galleryView() : MENU_VIEW==='title' ? titleView() : homeView();
+    screen.innerHTML = MENU_VIEW==='rival' ? rivalView() : MENU_VIEW==='gallery' ? galleryView() : MENU_VIEW==='lessons' ? lessonsView() : MENU_VIEW==='title' ? titleView() : homeView();
+    $('#modal').innerHTML = modalView();
     if (MENU_VIEW==='home') typewrite();
     return;
   }
-  $('#app').classList.remove('full');
-  menu.hidden=true; layout.hidden=false;
-  if (S.replaying) return;
   checkLesson();
-  const L=LESSONS[S.li];
-  const hs=$('#hand')?.scrollLeft||0;
-  const num = l => l.kind==='match' ? '▶' : l.kind==='online' ? '⇄' : LESSONS.indexOf(l)+1;
-  $('#nav').innerHTML = S.mode!=='lesson' ? '' : LESSONS.map((l,i)=>i>=PLAY_IDX?'':`<button class="chip${i===S.li?' on':''}${DONE.has(l.key)?' done':''}" data-act="nav" data-i="${i}"><span class="n">${num(l)}</span>${l.title}</button>`).join('');
-  $('#lesson').innerHTML = lessonPanel();
-  const insp=$('#insp');
-  const lobby = L.kind==='online' && (LINK.inLobby || !S.players.length);
-  if (L.kind==='anatomy' || lobby){
-    $('#stage').innerHTML = lobby ? lobbyView() : anatomyView();
-    insp.hidden=true; insp.classList.remove('open'); $('#app').classList.remove('sheet');
-  } else {
-    $('#stage').innerHTML = boardView() + handView();
-    insp.hidden=false; insp.innerHTML=inspView();
-    const open=!!(S.ui.sel||S.ui.mode);
-    insp.classList.toggle('open',open); $('#app').classList.toggle('sheet',open);
-  }
-  const h=$('#hand'); if (h) h.scrollLeft=hs;
-  $('#ovl').innerHTML=overlay();
+  screen.innerHTML = gameScreen();
+  $('#modal').innerHTML = modalView();
   if (S.hit){ const id=S.hit; setTimeout(()=>{ if (S.hit===id) S.hit=null; },500); }
 }
 
@@ -1369,35 +1370,38 @@ document.addEventListener('click', e => {
   const b=e.target.closest('[data-act]'); if (!b || b.disabled) return;
   const a=b.dataset.act, d=b.dataset;
   switch (a){
-    case 'nav': return goLesson(+d.i);
-    case 'menu': return goMenu();
-    case 'sound': SFX.toggle(); return render();
+    case 'menu': MODAL=null; return goMenu();
+    case 'sound': e.stopPropagation(); SFX.toggle(); return render();
     case 'press-start': SFX.start(); MENU_VIEW='home'; MENU_IDX=0; return render();
-    case 'm-learn': SFX.select(); return goLesson(nextLesson());
-    case 'm-rival': SFX.select(); MENU_VIEW='rival'; render(); return window.scrollTo(0,0);
-    case 'm-gallery': SFX.select(); MENU_VIEW='gallery'; render(); return window.scrollTo(0,0);
-    case 'menu-home': SFX.back(); MENU_VIEW='home'; return render();
-    case 'pick-deck': SFX.move(); RIVAL.deck=d.k; if (RIVAL.opp===d.k) RIVAL.opp='random'; saveRival(); return render();
-    case 'pick-diff': SFX.move(); RIVAL.diff=d.k; saveRival(); return render();
-    case 'pick-opp': SFX.move(); RIVAL.opp=d.k; saveRival(); return render();
-    case 'start-rival': SFX.start(); return goLesson(PLAY_IDX);
-    case 'gal': GALLERY=d.k; return render();
-    case 'setup': return goMenu('rival');
+    case 'm-learn': SFX.select(); LESSON_IDX=nextLesson(); MENU_VIEW='lessons'; return render();
+    case 'm-rival': SFX.select(); MENU_VIEW='rival'; return render();
+    case 'm-gallery': SFX.select(); MENU_VIEW='gallery'; return render();
     case 'm-friend': SFX.select(); return goLesson(FRIEND_IDX);
-    case 'next': return goLesson(S.li+1);
-    case 'reset': return goLesson(S.li);
-    case 'newmatch': return goLesson(PLAY_IDX);
+    case 'menu-home': SFX.back(); MENU_VIEW='home'; return render();
+    case 'pick-lesson': SFX.select(); MODAL='intro'; return goLesson(+d.i);
+    case 'deck-step': { SFX.move(); const ks=Object.keys(DECKS); RIVAL.deck=ks[(ks.indexOf(RIVAL.deck)+(+d.k)+ks.length)%ks.length]; if (RIVAL.opp===RIVAL.deck) RIVAL.opp='random'; saveRival(); return render(); }
+    case 'opp-step': { SFX.move(); const ks=['random',...Object.keys(DECKS).filter(k=>k!==RIVAL.deck)]; RIVAL.opp=ks[(ks.indexOf(RIVAL.opp)+(+d.k)+ks.length)%ks.length]; saveRival(); return render(); }
+    case 'pick-diff': SFX.move(); RIVAL.diff=d.k; saveRival(); return render();
+    case 'start-rival': SFX.start(); MODAL=null; return goLesson(PLAY_IDX);
+    case 'gal': SFX.move(); GALLERY=d.k; GAL_PAGE=0; return render();
+    case 'gal-page': SFX.move(); GAL_PAGE+= +d.k; return render();
+    case 'zoom': SFX.select(); ZOOM=d.id; return render();
+    case 'setup': MODAL=null; return goMenu('rival');
+    case 'modal': SFX.select(); MODAL=d.m; if (d.m==='result') S.overHidden=false; return render();
+    case 'next': MODAL = S.li+1<PLAY_IDX ? 'intro' : null; return goLesson(S.li+1);
+    case 'reset': MODAL=null; return goLesson(S.li);
+    case 'newmatch': MODAL=null; return goLesson(PLAY_IDX);
     case 'hideov': S.overHidden=true; return render();
-    case 'part': S.part=d.p; S.partsSeen.add(d.p); return render();
-    case 'acard': S.acard=d.id; return render();
-    case 'close': clearUI(); return render();
+    case 'part': SFX.move(); S.part=d.p; S.partsSeen.add(d.p); return render();
+    case 'acard': SFX.move(); S.acard=d.id; return render();
+    case 'close': ZOOM=null; MODAL=null; if (S && !MENU) clearUI(); return render();
     case 'host': return hostGame(false);
     case 'resume': return hostGame(true);
     case 'join': LINK.role='guest'; return scanFor(code => useHostCode(code));
     case 'scanreply': return scanFor(code => useReplyCode(code));
     case 'reconnect': LINK.inLobby=true; LINK.err=''; if (LINK.role==='host') return hostGame(true); LINK.step='choose'; return render();
     case 'cancellink': Net.close(); LINK.step='choose'; LINK.err=''; if (S.online && S.players.length){ LINK.inLobby=false; LINK.lost=true; } return render();
-    case 'leave': return goMenu();
+    case 'leave': MODAL=null; return goMenu();
     case 'rematch': return rematch();
     case 'copycode': {
       const t=$('#mycode'); const done=()=>toast('Code copied.');
@@ -1407,14 +1411,14 @@ document.addEventListener('click', e => {
     }
     case 'usecode': {
       const code=($('#paste')?.value||'').trim(); if (!code) return toast('Paste a code first.');
-      return LINK.step==='host-show' ? useReplyCode(code) : useHostCode(code);
+      MODAL=null; return LINK.step==='host-show' ? useReplyCode(code) : useHostCode(code);
     }
   }
   if (S.over) return;
   if (S.busy){ toast('Wait for the Rival to finish their turn.'); return; }
   if (a==='hand'){
     if (S.ui.mode==='promote') return toast('First choose a new Active Pokémon from your Bench.');
-    S.ui={sel:{kind:'hand',uid:+d.uid},mode:null,data:null}; return render();
+    SFX.move(); S.ui={sel:{kind:'hand',uid:+d.uid},mode:null,data:null}; return render();
   }
   if (a==='mon') return onMon(+d.owner,+d.uid);
   if (a==='do') return doUI(d.a,d);
@@ -1423,19 +1427,30 @@ document.addEventListener('pointerover', e => {
   const b=e.target.closest('.mi'); if (b && MENU && MENU_VIEW==='home') setMenuIdx(+b.dataset.idx);
 });
 document.addEventListener('keydown', e => {
-  if (!MENU || e.metaKey || e.ctrlKey || e.altKey) return;
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  if (e.key==='Escape' && (ZOOM || MODAL || (S && !MENU && (S.ui.sel || (S.ui.mode && S.ui.mode!=='promote'))))){ ZOOM=null; MODAL=null; if (S && !MENU) clearUI(); return render(); }
+  if (!MENU) return;
   if (MENU_VIEW==='title' && (e.key==='Enter' || e.key===' ')){ e.preventDefault(); SFX.start(); MENU_VIEW='home'; MENU_IDX=0; return render(); }
   if (MENU_VIEW==='home'){
-    if (e.key==='ArrowDown' || e.key==='s'){ e.preventDefault(); return setMenuIdx(MENU_IDX+1); }
-    if (e.key==='ArrowUp' || e.key==='w'){ e.preventDefault(); return setMenuIdx(MENU_IDX-1); }
+    if (e.key==='ArrowDown'){ e.preventDefault(); return setMenuIdx(MENU_IDX+1); }
+    if (e.key==='ArrowUp'){ e.preventDefault(); return setMenuIdx(MENU_IDX-1); }
     if (e.key==='Enter' || e.key===' '){ e.preventDefault(); return document.querySelector(`.mi[data-idx="${MENU_IDX}"]`)?.click(); }
     if (e.key==='Escape'){ SFX.back(); MENU_VIEW='title'; return render(); }
   }
-  if ((MENU_VIEW==='rival' || MENU_VIEW==='gallery') && e.key==='Escape'){ SFX.back(); MENU_VIEW='home'; return render(); }
+  if (MENU_VIEW==='lessons'){
+    if (e.key==='ArrowDown'||e.key==='ArrowUp'){ e.preventDefault(); SFX.move(); LESSON_IDX=(LESSON_IDX+(e.key==='ArrowDown'?1:-1)+PLAY_IDX)%PLAY_IDX; return render(); }
+    if (e.key==='Enter'){ e.preventDefault(); MODAL='intro'; return goLesson(LESSON_IDX); }
+  }
+  if (MENU_VIEW==='rival'){
+    if (e.key==='ArrowLeft'||e.key==='ArrowRight'){ e.preventDefault(); return document.querySelector(`[data-act="deck-step"][data-k="${e.key==='ArrowLeft'?-1:1}"]`)?.click(); }
+    if (e.key==='Enter'){ e.preventDefault(); return document.querySelector('[data-act="start-rival"]')?.click(); }
+  }
+  if (MENU_VIEW==='gallery' && (e.key==='ArrowLeft'||e.key==='ArrowRight')) return document.querySelector(`[data-act="gal-page"][data-k="${e.key==='ArrowLeft'?-1:1}"]`)?.click();
+  if (MENU_VIEW!=='home' && MENU_VIEW!=='title' && e.key==='Escape'){ SFX.back(); MENU_VIEW='home'; return render(); }
 });
 function onMon(owner,uid){
   const mode=S.ui.mode;
-  if (!mode){ S.ui.sel={kind:'mon',owner,uid}; return render(); }
+  if (!mode){ SFX.move(); S.ui.sel={kind:'mon',owner,uid}; return render(); }
   const p=P(ME), m=findMon(P(owner),uid);
   if (mode==='lure'){ if (owner===ME || !P(owner).bench.includes(m)) return toast(`Choose one of your opponent's Benched Pokémon.`); const c=S.ui.data; clearUI(); return act('trainer',{c,x:uid}); }
   if (owner!==ME) return toast('Choose one of your own Pokémon.');
@@ -1447,15 +1462,13 @@ function onMon(owner,uid){
   else if (mode==='potion'){ if (!m.damage) return toast(`${topC(m).name} has no damage to heal.`); act('trainer',{c:S.ui.data,x:uid}); }
   else if (mode==='switch'){ if (!onBench) return toast('Choose a Benched Pokémon.'); act('trainer',{c:S.ui.data,x:uid}); }
   else if (mode==='retreat'){ if (!onBench) return toast('Choose a Benched Pokémon.'); act('retreat',{m:uid}); }
-  else if (mode==='search') return toast('Pick a card from the list in the panel.');
-  const keep = findMon(p,uid) ? uid : p.active.uid;
-  S.ui={sel:{kind:'mon',owner:ME,uid:mode==='retreat'||mode==='switch'?p.active.uid:keep},mode:null,data:null};
-  render();
+  else if (mode==='search') return toast('Pick a card from the list.');
+  clearUI(); render();
 }
 function doUI(a,d){
   const p=P(ME);
-  if (a==='cancel'){ if (S.ui.mode!=='promote'){ S.ui.mode=null; S.ui.data=null; } return render(); }
-  if (S.locked) return toast(`This lesson's turn is over. Press Reset lesson to try again.`);
+  if (a==='cancel'){ if (S.ui.mode!=='promote'){ S.ui.mode=null; S.ui.data=null; S.ui.sel=null; } return render(); }
+  if (S.locked) return toast(`This lesson's turn is over. Tap Retry to try again.`);
   if (S.online && LINK.lost) return toast('Reconnect the phones before making a move.');
   if (a==='start'){
     if (!p.active) return toast('Choose an Active Pokémon first.');
@@ -1466,24 +1479,23 @@ function doUI(a,d){
   if (S.ui.mode==='promote') return toast('Choose a new Active Pokémon from your Bench first.');
   const sel=S.ui.sel, hc = sel?.kind==='hand' ? p.hand.find(c=>c.uid===sel.uid) : null;
   switch (a){
-    case 'bench': { const r=whyNotBench(ME,hc); if (r) return toast(r); const uid=hc.uid; act('bench',{c:uid}); S.ui={sel:{kind:'mon',owner:ME,uid},mode:null,data:null}; break; }
-    case 'attach': { const r=whyNotAttach(ME); if (r) return toast(r); S.ui.mode='attach'; S.ui.data=hc.uid; break; }
-    case 'evolve': S.ui.mode='evolve'; S.ui.data=hc.uid; break;
+    case 'bench': { const r=whyNotBench(ME,hc); if (r) return toast(r); act('bench',{c:hc.uid}); clearUI(); break; }
+    case 'attach': { const r=whyNotAttach(ME); if (r) return toast(r); S.ui={sel:null,mode:'attach',data:hc.uid}; break; }
+    case 'evolve': S.ui={sel:null,mode:'evolve',data:hc.uid}; break;
     case 'play': {
       const r=whyNotTrainer(ME,hc); if (r) return toast(r);
       const MODES={potion:'potion',superpotion:'potion',switch:'switch',lurewhistle:'lure',sparebattery:'battery',fieldguide:'search',retriever:'search',energysearch:'search',rushorders:'search'};
-      if (MODES[hc.id]){ S.ui.mode=MODES[hc.id]; S.ui.data=hc.uid; }
+      if (MODES[hc.id]) S.ui={sel:null,mode:MODES[hc.id],data:hc.uid};
       else { clearUI(); return act('trainer',{c:hc.uid}); }
       break;
     }
     case 'search': { const c=S.ui.data; clearUI(); return act('trainer',{c,x:d.id}); }
-    case 'retreat': { const r=whyNotRetreat(ME); if (r) return toast(r); S.ui.mode='retreat'; break; }
-    case 'attack': { const r=whyNotAttack(ME,+d.i); if (r) return toast(r); return act('attack',{i:+d.i}); }
-    case 'ability': { const m=findMon(p,+d.uid), r=whyNotAbility(ME,m); if (r) return toast(r); return act('ability',{m:m.uid}); }
+    case 'retreat': { const r=whyNotRetreat(ME); if (r) return toast(r); S.ui={sel:null,mode:'retreat',data:null}; break; }
+    case 'attack': { const r=whyNotAttack(ME,+d.i); if (r) return toast(r); clearUI(); return act('attack',{i:+d.i}); }
+    case 'ability': { const m=findMon(p,+d.uid), r=whyNotAbility(ME,m); if (r) return toast(r); clearUI(); return act('ability',{m:m.uid}); }
     case 'end': clearUI(); return act('end');
   }
   render();
 }
 
-$('#logo').innerHTML = `<svg viewBox="0 0 24 24"><path d="${TYPE.F.g}"/></svg>`;
-if (location.hash==='#friend') goLesson(FRIEND_IDX); else { goMenu('title'); }
+if (location.hash==='#friend') goLesson(FRIEND_IDX); else goMenu('title');
