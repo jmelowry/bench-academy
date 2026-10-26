@@ -1,5 +1,5 @@
 // Claw Paper Scissors service worker. Scoped to /claw-paper-scissors/ only.
-const CACHE = 'claw-paper-scissors-v1';
+const CACHE = 'claw-paper-scissors-v2';
 const SHELL = ['./', 'index.html', 'game.js', 'manifest.webmanifest',
   'fonts/press-start-2p-latin-400-normal.woff2', 'fonts/vt323-latin-400-normal.woff2',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png'];

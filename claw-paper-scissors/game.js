@@ -8,8 +8,11 @@ const BEAT = 500, FORCE_MS = 15000, MAX_PLAYERS = 4;
 const OUT = '#0e0a1c', INK = '#f4ecd8', DIM = '#a698d0', RED = '#f83848', BLUE = '#3cbcfc', GOLD = '#f8b800', GOOD = '#58d854';
 const PCOLORS = ['#58d854', '#f8b800', '#f878f8', '#fca044'];
 const KEY = 'claw-paper-scissors-v2';
-const cv = document.getElementById('screen');
+// The game renders to one offscreen canvas; each frame is copied to every visible screen
+// (one in cabinet seating, two in table seating).
+const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
 const ctx = cv.getContext('2d');
+const displays = [...document.querySelectorAll('canvas.display')].map(c => ({ c, g: c.getContext('2d') }));
 
 // 16x16 sitting cat, authored as the left half and mirrored.
 const HALF = [
@@ -221,7 +224,7 @@ const jingle = () => [523, 659, 784, 1047].forEach((f, i) => tone(f, .14, i * .1
 
 // ---------- persistence ----------
 const store = (() => {
-  let s = { players: [], rounds: 10, rec: {} };
+  let s = { players: [], rounds: 10, seat: 'cabinet', rec: {} };
   try { const v = JSON.parse(localStorage.getItem(KEY)); if (v && typeof v === 'object') s = Object.assign(s, v); } catch (e) {}
   ROSTER.forEach(c => { s.rec[c.name] = s.rec[c.name] || { w: 0, l: 0 }; });
   s.players = (s.players || []).filter(p => p && p.name).slice(0, MAX_PLAYERS);
@@ -310,13 +313,11 @@ const ranked = () => [...session.players].sort((a, b) => b.score - a.score || b.
 function startSession() {
   if (!store.players.length) return;
   unlockAudio();
-  session = { players: store.players.map(p => ({ name: p.name, color: p.color, score: 0, streak: 0, pick: null })), rounds: store.rounds, roundNo: 0, voteT: 0 };
-  document.getElementById('endBtn').hidden = false;
+  session = { players: store.players.map(p => ({ name: p.name, color: p.color, side: p.side || 'a', score: 0, streak: 0, pick: null })), rounds: store.rounds, roundNo: 0, voteT: 0 };
   newRound();
 }
 function endSession() {
   session = null;
-  document.getElementById('endBtn').hidden = true;
   newRound();
 }
 
@@ -438,6 +439,7 @@ function draw() {
     text(wc.name + ' WINS!', 128, 16, 16, st.winner === 'l' ? RED : BLUE);
     text(`TAKES IT ${Math.max(st.score.l, st.score.r)}-${Math.min(st.score.l, st.score.r)}`, 128, 40, 8);
     if (st.summary) text(st.summary, 128, 54, 8, GOLD);
+    if (session && t > 1500 && Math.floor(clock / 600) % 2) text('TAP SCREEN FOR NEXT', 128, 70, 8, DIM);
   } else if (phase === 'final') {
     const r = ranked(), tie = r.length > 1 && r[0].score === r[1].score;
     text('FINAL SCORES', 128, 16, 16, GOLD);
@@ -462,11 +464,24 @@ function frame(now) {
     for (let i = parts.length - 1; i >= 0; i--) { const p = parts[i]; p.vy += (p.g || 0) * dt; p.x += (p.vx || 0) * dt; p.y += p.vy * dt; p.life -= dt; if (p.life <= 0) parts.splice(i, 1); }
   }
   draw();
+  for (const d of displays) if (d.c.offsetParent !== null) d.g.drawImage(cv, 0, 0);
   requestAnimationFrame(frame);
 }
 
 // ---------- DOM ----------
+const frameEl = document.getElementById('frame');
 const panel = document.getElementById('panel');
+const tableSeat = () => !!session && store.seat === 'table';
+
+// Fit the fixed 450 x 800 frame to the screen; extra height on tall phones goes to the frame.
+function fit() {
+  const f = document.getElementById('fit'); if (!f) return;
+  const w = f.clientWidth, h = f.clientHeight, s = Math.min(w / 450, h / 800) || 1;
+  const fh = Math.max(800, Math.floor(h / s));
+  const r = document.documentElement.style; r.setProperty('--s', s); r.setProperty('--fh', fh + 'px');
+}
+addEventListener('resize', fit); if (window.visualViewport) visualViewport.addEventListener('resize', fit);
+
 function el(tag, attrs = {}, ...kids) {
   const e = document.createElement(tag);
   for (const [k, v] of Object.entries(attrs)) {
@@ -486,21 +501,45 @@ function renderMeta() {
   else m.replaceChildren('ROUND ', el('b', {}, String(session.roundNo)), ` OF ${session.rounds}`);
 }
 
+let ctlsKey = '';
+function renderCtls() {
+  // Rebuild only when something shown on the buttons changed, so a tap can't land mid-rebuild.
+  const key = [!!session, store.seat, soundOn, paused].join();
+  if (key === ctlsKey) return;
+  ctlsKey = key;
+  document.querySelectorAll('[data-ctls]').forEach(box => {
+    const b = [
+      el('button', { class: 'btn', type: 'button', 'aria-pressed': String(soundOn), onclick: toggleSound }, soundOn ? 'SOUND ON' : 'SOUND OFF'),
+      el('button', { class: 'btn', type: 'button', 'aria-pressed': String(paused), onclick: togglePause }, paused ? 'RESUME' : 'PAUSE'),
+      el('button', { class: 'btn', type: 'button', onclick: openSheet }, 'CATS')
+    ];
+    if (session) {
+      b.splice(2, 0, el('button', { class: 'btn', type: 'button', onclick: () => setSeat(store.seat === 'table' ? 'cabinet' : 'table') }, store.seat === 'table' ? 'CABINET' : 'TABLE'));
+      b.push(el('button', { class: 'btn', type: 'button', onclick: endSession }, 'END'));
+    }
+    box.replaceChildren(...b);
+  });
+}
+function setSeat(seat) { store.seat = seat; persist(); renderPanel(); }
+
 function renderPanel() {
+  frameEl.dataset.seat = tableSeat() ? 'table' : 'cabinet';
+  renderCtls(); renderMeta();
   // Attract mode changes phase every few seconds; don't rebuild the lobby under someone typing a name.
-  if (!session) { if (panel.dataset.mode !== 'lobby') renderLobby(); return; }
-  panel.dataset.mode = st.phase === 'final' ? 'final' : 'rows';
+  if (!session) { clearTable(); if (panel.dataset.mode !== 'lobby') renderLobby(); else renderStatus(); return; }
   if (st.phase === 'final') return renderFinal();
   renderRows();
 }
+function clearTable() { document.querySelectorAll('[data-rows]').forEach(r => r.replaceChildren()); }
 
 function renderLobby() {
   panel.dataset.mode = 'lobby';
-  const players = store.players;
-  const full = players.length >= MAX_PLAYERS;
+  const players = store.players, full = players.length >= MAX_PLAYERS, table = store.seat === 'table';
   const list = el('ul', { class: 'players' },
     players.length ? players.map((p, i) => el('li', { style: `--pc:${p.color}` },
       el('span', { class: 'sw' }), el('span', { class: 'pn' }, p.name),
+      table && el('button', { class: 'side', type: 'button', 'aria-label': `${p.name} sits on the ${p.side === 'b' ? 'far' : 'near'} side`,
+        onclick: () => { p.side = p.side === 'b' ? 'a' : 'b'; persist(); renderLobby(); } }, p.side === 'b' ? 'FAR' : 'NEAR'),
       el('button', { class: 'x', type: 'button', 'aria-label': `Remove ${p.name}`, onclick: () => { store.players.splice(i, 1); persist(); renderLobby(); } }, 'X')))
     : el('li', { class: 'empty' }, 'Add 1 to 4 players to start.'));
   const input = el('input', { id: 'nameIn', maxlength: '8', placeholder: 'NAME', autocomplete: 'off', autocapitalize: 'characters', spellcheck: 'false', enterkeyhint: 'done', 'aria-label': 'Player name', disabled: full });
@@ -510,23 +549,39 @@ function renderLobby() {
     if (!name || store.players.length >= MAX_PLAYERS) return;
     if (store.players.some(p => p.name === name)) { input.value = ''; input.placeholder = 'TAKEN'; return; }
     const used = new Set(store.players.map(p => p.color));
-    store.players.push({ name, color: PCOLORS.find(c => !used.has(c)) });
+    const near = store.players.filter(p => (p.side || 'a') === 'a').length;
+    store.players.push({ name, color: PCOLORS.find(c => !used.has(c)), side: near <= store.players.length - near ? 'a' : 'b' });
     persist(); renderLobby();
     const again = document.getElementById('nameIn'); if (again && !again.disabled) again.focus();
   } }, input, el('button', { class: 'btn', type: 'submit', disabled: full }, 'ADD'));
-  const chips = el('div', { class: 'chips', role: 'group', 'aria-label': 'Rounds per game' }, el('span', { class: 'lbl' }, 'ROUNDS'),
-    [5, 10, 15].map(n => el('button', { class: 'btn', type: 'button', 'aria-pressed': String(store.rounds === n), onclick: () => { store.rounds = n; persist(); renderLobby(); } }, String(n))));
+  const chip = (label, on, fn) => el('button', { class: 'btn', type: 'button', 'aria-pressed': String(on), onclick: fn }, label);
+  const rounds = el('div', { class: 'chips', role: 'group', 'aria-label': 'Rounds per game' }, el('span', { class: 'lbl' }, 'ROUNDS'),
+    [5, 10, 15].map(n => chip(String(n), store.rounds === n, () => { store.rounds = n; persist(); renderLobby(); })));
+  const seats = el('div', { class: 'chips', role: 'group', 'aria-label': 'Seating' }, el('span', { class: 'lbl' }, 'SEATING'),
+    chip('CABINET', !table, () => { store.seat = 'cabinet'; persist(); renderLobby(); }),
+    chip('TABLE', table, () => { store.seat = 'table'; persist(); renderLobby(); }));
   const start = el('button', { class: 'btn big', type: 'button', disabled: !players.length, onclick: startSession }, 'START');
   panel.replaceChildren(
-    el('h2', {}, "WHO'S PLAYING?"), list, form, chips, start,
-    el('p', { class: 'hint' }, 'Each round two cats play best of 3. Everyone picks a winner, and the match starts once all picks are in. A right call is 1 point; a right call most of the table missed is 2.')
+    el('h2', {}, "WHO'S PLAYING?"), list, form, rounds, seats, start,
+    el('p', { class: 'hint' }, table
+      ? 'TABLE: lay the phone flat between two sides. Each side gets its own screen. Tap NEAR/FAR to seat each player.'
+      : 'Everyone picks a winner each round. Right call +1; right when most of the table missed +2.')
   );
   renderStatus();
 }
 
 function renderRows() {
-  const rows = el('div', { class: 'rows' }, session.players.map((p, i) => buildRow(p, i)));
-  panel.replaceChildren(rows);
+  const all = session.players.map((p, i) => buildRow(p, i));
+  if (tableSeat()) {
+    panel.replaceChildren(); panel.dataset.mode = 'table';
+    ['a', 'b'].forEach(side => {
+      const mine = all.filter((r, i) => session.players[i].side === side);
+      document.querySelector(`[data-rows="${side}"]`).replaceChildren(...(mine.length ? mine : [el('div', { class: 'nobody' }, 'NOBODY ON THIS SIDE')]));
+    });
+  } else {
+    clearTable(); panel.dataset.mode = 'rows';
+    panel.replaceChildren(el('div', { class: 'rows' }, all));
+  }
   renderStatus();
 }
 function buildRow(p, i) {
@@ -543,7 +598,7 @@ function buildRow(p, i) {
 }
 function paintRow(row, p) {
   const open = st.phase === 'intro' || st.phase === 'vote';
-  const st_ = row.querySelector('.st');
+  const s = row.querySelector('.st');
   row.classList.toggle('open', open && !p.pick);
   row.classList.toggle('locked', open && !!p.pick);
   row.classList.toggle('shown', !open);
@@ -552,44 +607,52 @@ function paintRow(row, p) {
     b.classList.toggle('chosen', !open && b.dataset.side === p.pick);
   });
   row.querySelector('.ps').textContent = `${p.score} PTS`;
-  st_.className = 'st';
-  if (open) st_.textContent = p.pick ? 'LOCKED' : 'PICK!';
+  s.className = 'st';
+  if (open) s.textContent = p.pick ? 'LOCKED' : 'PICK!';
   else if (st.phase === 'result') {
-    if (!p.pick) st_.textContent = 'SAT OUT';
-    else if (p.gain) { st_.textContent = p.gain > 1 ? '+2 UPSET' : '+1'; st_.classList.add('good'); }
-    else { st_.textContent = 'MISSED'; st_.classList.add('bad'); }
-  } else st_.textContent = p.pick ? '' : 'SAT OUT';
+    if (!p.pick) s.textContent = 'SAT OUT';
+    else if (p.gain) { s.textContent = p.gain > 1 ? '+2 UPSET' : '+1'; s.classList.add('good'); }
+    else { s.textContent = 'MISSED'; s.classList.add('bad'); }
+  } else s.textContent = p.pick ? '' : 'SAT OUT';
 }
 function updateRow(i) { const row = document.getElementById(`row${i}`); if (row) paintRow(row, session.players[i]); }
 
 function renderFinal() {
-  let prev = null, rank = 0;
-  const items = ranked().map((p, i) => {
-    if (p.score !== prev) { rank = i + 1; prev = p.score; }
-    return el('li', { style: `--pc:${p.color}` }, el('span', { class: 'rk' }, `#${rank}`), el('span', { class: 'pn' }, p.name), el('span', { class: 'pts' }, `${p.score} PTS`));
-  });
-  panel.replaceChildren(el('h2', {}, 'FINAL SCORES'), el('ol', { class: 'podium' }, items),
-    el('div', { class: 'btnrow' },
-      el('button', { class: 'btn big', type: 'button', onclick: startSession }, 'PLAY AGAIN'),
-      el('button', { class: 'btn', type: 'button', onclick: endSession }, 'CHANGE PLAYERS')));
+  const build = () => {
+    let prev = null, rank = 0;
+    const items = ranked().map((p, i) => {
+      if (p.score !== prev) { rank = i + 1; prev = p.score; }
+      return el('li', { style: `--pc:${p.color}` }, el('span', { class: 'rk' }, `#${rank}`), el('span', { class: 'pn' }, p.name), el('span', { class: 'pts' }, `${p.score} PTS`));
+    });
+    return [el('ol', { class: 'podium' }, items),
+      el('div', { class: 'btnrow' },
+        el('button', { class: 'btn big', type: 'button', onclick: startSession }, 'PLAY AGAIN'),
+        el('button', { class: 'btn', type: 'button', onclick: endSession }, 'NEW PLAYERS'))];
+  };
+  if (tableSeat()) {
+    panel.replaceChildren(); panel.dataset.mode = 'table';
+    document.querySelectorAll('[data-rows]').forEach(r => r.replaceChildren(el('div', { class: 'rows' }, build())));
+  } else {
+    clearTable(); panel.dataset.mode = 'final';
+    panel.replaceChildren(el('h2', {}, 'FINAL SCORES'), ...build());
+  }
   renderStatus();
 }
 
+// The status line exists once per visible seat; build fresh nodes for each.
 function renderStatus() {
-  const s = document.getElementById('status');
-  let force = null;
-  if (!session) s.textContent = '';
-  else if (st.phase === 'intro' || st.phase === 'vote') {
-    const waiting = session.players.filter(p => !p.pick).map(p => p.name);
-    s.textContent = waiting.length ? `WAITING ON ${waiting.join(', ')}` : 'ALL IN';
-    if (st.phase === 'vote' && session.forceShown && session.players.some(p => p.pick) && waiting.length)
-      force = el('button', { class: 'btn', type: 'button', onclick: forceStart }, 'START WITHOUT THEM');
-  } else if (st.phase === 'result') {
-    const lastRound = session.roundNo >= session.rounds;
-    s.replaceChildren(el('button', { class: 'btn big', type: 'button', onclick: nextRound }, lastRound ? 'FINAL SCORES' : 'NEXT ROUND'));
-    return;
-  } else s.textContent = st.phase === 'final' ? 'GAME OVER' : 'PICKS LOCKED';
-  if (force) s.append(' ', force);
+  const targets = tableSeat() ? document.querySelectorAll('.tbl .status') : document.querySelectorAll('.cab .status');
+  targets.forEach(s => {
+    if (!session) { s.textContent = ''; return; }
+    if (st.phase === 'intro' || st.phase === 'vote') {
+      const waiting = session.players.filter(p => !p.pick).map(p => p.name);
+      s.replaceChildren(waiting.length ? `WAITING ON ${waiting.join(', ')}` : 'ALL IN');
+      if (st.phase === 'vote' && session.forceShown && session.players.some(p => p.pick) && waiting.length)
+        s.append(el('button', { class: 'btn', type: 'button', onclick: forceStart }, 'START WITHOUT THEM'));
+    } else if (st.phase === 'result') {
+      s.replaceChildren(el('button', { class: 'btn big', type: 'button', onclick: nextRound }, session.roundNo >= session.rounds ? 'FINAL SCORES' : 'NEXT ROUND'));
+    } else s.textContent = st.phase === 'final' ? 'GAME OVER' : 'PICKS LOCKED';
+  });
 }
 
 function renderTable() {
@@ -601,32 +664,34 @@ function renderTable() {
     el('td', { class: 'num' }, String(store.rec[c.name].l)),
     el('td', {}, favors(c)))));
 }
+const sheet = document.getElementById('sheet');
+function openSheet() { renderTable(); sheet.hidden = false; }
+document.getElementById('sheetClose').addEventListener('click', () => { sheet.hidden = true; });
 
 // Picks fire on pointerdown so several people can tap at once on one screen;
-// keyboard activation (click with detail 0) still works.
-panel.addEventListener('pointerdown', e => {
+// keyboard activation (click with detail 0) still works. Tapping a screen advances past a result.
+frameEl.addEventListener('pointerdown', e => {
+  if (e.pointerType === 'mouse' && e.button !== 0) return;
   const b = e.target.closest('.pick');
-  if (!b || b.disabled || (e.pointerType === 'mouse' && e.button !== 0)) return;
-  unlockAudio();
-  setPick(+b.dataset.i, b.dataset.side);
+  if (b) { if (!b.disabled) { unlockAudio(); setPick(+b.dataset.i, b.dataset.side); } return; }
+  if (e.target.closest('canvas.display') && session && st.phase === 'result' && st.t > 1500) nextRound();
 });
-panel.addEventListener('click', e => {
+frameEl.addEventListener('click', e => {
   const b = e.target.closest('.pick');
   if (b && !b.disabled && e.detail === 0) setPick(+b.dataset.i, b.dataset.side);
 });
 
-const soundBtn = document.getElementById('soundBtn'), pauseBtn = document.getElementById('pauseBtn');
-soundBtn.addEventListener('click', () => {
-  soundOn = !soundOn; soundBtn.textContent = soundOn ? 'SOUND ON' : 'SOUND OFF'; soundBtn.setAttribute('aria-pressed', String(soundOn));
+function toggleSound() {
+  soundOn = !soundOn;
   if (soundOn) { unlockAudio(); meow(600); } else if (keepAlive) keepAlive.pause();
-});
-function togglePause() { paused = !paused; pauseBtn.textContent = paused ? 'RESUME' : 'PAUSE'; pauseBtn.setAttribute('aria-pressed', String(paused)); }
-pauseBtn.addEventListener('click', togglePause);
-document.getElementById('endBtn').addEventListener('click', endSession);
+  renderCtls();
+}
+function togglePause() { paused = !paused; renderCtls(); }
 document.addEventListener('keydown', e => {
   if (e.key === ' ' && !['BUTTON', 'INPUT'].includes(e.target.tagName)) { e.preventDefault(); togglePause(); }
+  if (e.key === 'Escape') sheet.hidden = true;
 });
 
-renderTable(); newRound();
+fit(); renderTable(); newRound();
 requestAnimationFrame(frame);
 })();
