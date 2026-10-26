@@ -18,6 +18,8 @@ self.addEventListener('fetch', e => {
   const req = e.request;
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
+  // Other apps hosted in subfolders (e.g. /claw-paper-scissors/) run their own service worker.
+  if (url.origin === location.origin && url.pathname.includes('/claw-paper-scissors/')) return;
   // App pages: network first so updates land, fall back to cache offline.
   if (req.mode === 'navigate') {
     e.respondWith(fetch(req).then(r => { const copy = r.clone(); caches.open(CACHE).then(c => c.put('index.html', copy)); return r; })

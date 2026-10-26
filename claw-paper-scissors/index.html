@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Claw Paper Scissors</title>
+<meta name="description" content="Pixel cats play rock paper scissors. You and your friends call the winner.">
+<meta name="theme-color" content="#100a20">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Claw RPS">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<link rel="preload" href="fonts/press-start-2p-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+<style>
+@font-face{font-family:"Press Start 2P";src:url(fonts/press-start-2p-latin-400-normal.woff2) format("woff2");font-display:swap}
+@font-face{font-family:"VT323";src:url(fonts/vt323-latin-400-normal.woff2) format("woff2");font-display:swap}
+/* Layout: one arcade cabinet column — marquee, screen, control deck, standings. Single dark look by design. */
+:root{
+  --bg:#100a20; --panel:#1c1438; --edge:#3a2c66; --ink:#f4ecd8; --dim:#a698d0;
+  --red:#f83848; --blue:#3cbcfc; --gold:#f8b800; --good:#58d854;
+  --display:"Press Start 2P", ui-monospace, "Courier New", monospace;
+  --body:"VT323", ui-monospace, "Courier New", monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink)}
+body{font-family:var(--body);font-size:20px;line-height:1.2;-webkit-text-size-adjust:100%;
+  padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+[hidden]{display:none!important}
+button{font:inherit;color:inherit}
+.wrap{max-width:760px;margin:0 auto;padding-block:14px 32px;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));
+  padding-right:max(16px, env(safe-area-inset-right, 0px));
+  display:flex;flex-direction:column;gap:14px}
+header{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:6px 16px}
+h1{font-family:var(--display);font-size:clamp(13px,3.6vw,22px);margin:0;color:var(--gold);
+  text-shadow:3px 3px 0 var(--red);letter-spacing:.02em;font-weight:normal}
+.meta{color:var(--dim);font-variant-numeric:tabular-nums}
+.meta b{color:var(--ink);font-weight:normal}
+
+.cabinet{background:var(--panel);border:4px solid var(--edge);padding:8px;
+  box-shadow:0 0 0 4px var(--bg),0 0 0 8px var(--edge)}
+.screen{position:relative}
+.screen canvas{display:block;width:100%;height:auto;aspect-ratio:256/224;image-rendering:pixelated;image-rendering:crisp-edges;background:#160e30}
+.screen::after{content:"";position:absolute;inset:0;pointer-events:none;
+  background:repeating-linear-gradient(to bottom,rgba(0,0,0,.18) 0 1px,transparent 1px 3px)}
+
+.panel{display:flex;flex-direction:column;gap:10px}
+.panel h2{font-family:var(--display);font-size:11px;margin:0;letter-spacing:.06em;font-weight:normal}
+.btn{font-family:var(--display);font-size:10px;background:var(--bg);border:3px solid var(--edge);padding:10px 12px;cursor:pointer;touch-action:manipulation;letter-spacing:.04em}
+.btn:active{transform:translateY(2px)}
+.btn.big{font-size:14px;padding:16px;border-color:var(--gold);color:var(--gold);background:var(--panel)}
+.btn.big:disabled{opacity:.4;cursor:default;transform:none}
+.btn[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
+.btn:focus-visible,.pick:focus-visible,input:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+.hint{color:var(--dim);margin:0;font-size:18px;max-width:60ch}
+
+/* lobby */
+.players{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.players li{display:flex;align-items:center;gap:10px;background:var(--panel);border:3px solid var(--edge);padding:6px 6px 6px 10px;min-width:0}
+.players .sw{width:14px;height:14px;background:var(--pc);box-shadow:0 0 0 2px var(--bg);flex:none}
+.players .pn{font-family:var(--display);font-size:11px;color:var(--pc);flex:1;min-width:0;overflow-wrap:anywhere}
+.players .x{font-family:var(--display);font-size:10px;background:none;border:0;color:var(--dim);padding:8px;cursor:pointer}
+.players .empty{grid-column:1/-1;color:var(--dim);border-style:dashed}
+.addrow{display:flex;gap:8px}
+.addrow input{flex:1;min-width:0;font-family:var(--display);font-size:16px;text-transform:uppercase;background:var(--bg);color:var(--ink);border:3px solid var(--edge);padding:10px;border-radius:0}
+.addrow input::placeholder{color:var(--edge)}
+.chips{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.chips .lbl{font-family:var(--display);font-size:10px;color:var(--dim);margin-right:4px}
+
+/* pick rows */
+.rows{display:flex;flex-direction:column;gap:8px}
+.row{display:grid;grid-template-columns:1fr minmax(82px,auto) 1fr;gap:8px;align-items:stretch}
+.pick{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;padding:8px 4px;min-width:0;
+  background:var(--panel);border:4px solid var(--edge);cursor:pointer;touch-action:manipulation;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+.pick canvas{width:30px;height:27px;image-rendering:pixelated;display:block;pointer-events:none}
+.pick .cn{font-family:var(--display);font-size:8px;letter-spacing:.04em;text-align:center;overflow-wrap:anywhere;pointer-events:none}
+.pick.l .cn{color:var(--red)} .pick.r .cn{color:var(--blue)}
+.row.open .pick.l{border-color:var(--red)} .row.open .pick.r{border-color:var(--blue)}
+.row.open .pick:active{transform:translateY(2px);background:var(--edge)}
+.row.locked .pick{opacity:.5}
+.pick:disabled{cursor:default}
+.row.shown .pick{opacity:.35}
+.row.shown .pick.chosen{opacity:1;border-color:var(--pc);box-shadow:inset 0 0 0 2px var(--pc)}
+.who{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;text-align:center;min-width:0}
+.who .pn{font-family:var(--display);font-size:10px;color:var(--pc);overflow-wrap:anywhere}
+.who .ps{font-variant-numeric:tabular-nums;color:var(--dim);font-size:18px}
+.who .st{font-family:var(--display);font-size:8px;letter-spacing:.04em;color:var(--dim)}
+.row.open .who .st{color:var(--ink);animation:blink 1s steps(2) infinite}
+.row.locked .who .st{color:var(--gold);animation:none}
+.who .st.good{color:var(--good)} .who .st.bad{color:var(--red)}
+@keyframes blink{50%{opacity:.3}}
+.bar{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px}
+#status{font-family:var(--display);font-size:9px;color:var(--gold);letter-spacing:.04em}
+.ctls{display:flex;gap:8px;flex-wrap:wrap}
+
+/* final */
+.podium{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.podium li{display:grid;grid-template-columns:2.5em 1fr auto;align-items:center;gap:10px;background:var(--panel);border:3px solid var(--edge);padding:8px 12px}
+.podium li:first-child{border-color:var(--gold)}
+.podium .rk{font-family:var(--display);font-size:10px;color:var(--dim)}
+.podium .pn{font-family:var(--display);font-size:11px;color:var(--pc)}
+.podium .pts{font-family:var(--display);font-size:11px;font-variant-numeric:tabular-nums}
+.btnrow{display:flex;gap:8px;flex-wrap:wrap}
+.btnrow .btn{flex:1}
+
+details{border-top:3px solid var(--edge);padding-top:10px}
+summary{font-family:var(--display);font-size:11px;cursor:pointer;letter-spacing:.06em;padding:6px 0}
+.board{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+th{font-family:var(--display);font-size:9px;color:var(--dim);text-align:left;padding:6px 8px;border-bottom:3px solid var(--edge);letter-spacing:.06em;font-weight:normal}
+td{padding:4px 8px;border-bottom:1px dashed var(--edge)}
+td.num,th.num{text-align:right}
+td.cat{display:flex;align-items:center;gap:10px}
+td.cat canvas{width:30px;height:27px;image-rendering:pixelated}
+@media (prefers-reduced-motion:reduce){.row.open .who .st{animation:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>CLAW PAPER SCISSORS</h1>
+    <div class="meta" id="meta"></div>
+  </header>
+
+  <div class="cabinet">
+    <div class="screen"><canvas id="screen" width="256" height="224" aria-label="Two pixel cats playing rock paper scissors"></canvas></div>
+  </div>
+
+  <section class="panel" id="panel" aria-live="polite"></section>
+
+  <div class="bar">
+    <span id="status"></span>
+    <span class="ctls">
+      <button class="btn" id="soundBtn" type="button" aria-pressed="false">SOUND OFF</button>
+      <button class="btn" id="pauseBtn" type="button" aria-pressed="false">PAUSE</button>
+      <button class="btn" id="endBtn" type="button" hidden>END GAME</button>
+    </span>
+  </div>
+
+  <details>
+    <summary>LITTER STANDINGS</summary>
+    <div class="board"><table>
+      <thead><tr><th>CAT</th><th class="num">W</th><th class="num">L</th><th>FAVORS</th></tr></thead>
+      <tbody id="standings"></tbody>
+    </table></div>
+  </details>
+</div>
+<script src="game.js"></script>
+<script>
+if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+</script>
+</body>
+</html>
